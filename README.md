@@ -4,6 +4,9 @@
 
 ## Usage
 
+runGitHub("CloneR","your_username")
+
+
 ## Contributors
 
 CloneR has been designed by Dr **Matteo Cereda** and Prof **Francesca Ciccarelli**. 
