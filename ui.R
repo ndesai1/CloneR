@@ -9,6 +9,8 @@ library(tidyr)
 library(ggplot2)
 library(reshape2)
 
+library(plotly)
+
 panel_width = 3
 result_with = 10
 
@@ -56,9 +58,9 @@ shinyUI(
                                # shinyjs::hidden(
                                  # div(
                           tabsetPanel(
-                            tabPanel("Clone Composition",      plotOutput("global_report")), 
-                            tabPanel("Summary",                tableOutput("composition")), 
-                            tabPanel("Alteration Clonalities", tableOutput("dataset"))
+                            tabPanel("Clone Composition",      plotlyOutput("global_report")), 
+                            tabPanel('Summary',                DT::dataTableOutput('composition')), 
+                            tabPanel('Alteration Clonalities', DT::dataTableOutput('dataset')) 
                           )
                                  # )
                                # )

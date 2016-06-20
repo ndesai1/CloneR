@@ -289,31 +289,6 @@ get.hetero.SNPs.freq.in.CNV.regions = function(c,s){
 }
 
 
-# get.clonality.mutations.in.cnv = function(x,y){
-#   if(is.null(x)) return(NULL)
-# 
-#   ix = which(!is.na(x$assignedCNV)) 
-#   if(length(ix)>0){
-#     for(i in ix) x$cell[i] = get.tc.correction.somatic(x$freq[i],y$tc, x$CN_raw[i])
-#     
-#     if(y$man){
-#       idX = which(!is.na(x$assignedCNV) & x$chrom=="chrX")
-#       idY = which(!is.na(x$assignedCNV) & x$chrom=="chrY")
-#       if(length(idX)>0) for(i in idX) x$cell[i] = get.tc.correction.somatic( x$freq[i], y$tc, x$CN_raw[i], CNn=1)
-#       if(length(idY)>0) for(i in idY) x$cell[i] = get.tc.correction.somatic( x$freq[i], y$tc, x$CN_raw[i], CNn=1)
-#     }
-#     x$cell = round(x$cell,0)
-#     a = subset(x, is.na(assignedCNV))
-#     b = subset(x, !is.na(assignedCNV) & !duplicated(id))
-#     x = rbind(a,b)
-#     return(x)
-#   }else{
-#     return(x)
-#   }
-# }
-
-
-
 # correzione per il tc (germinali)
 
 get.tc.correction.germline = function( obs, tc, CNt, CNn=2, Fg = 50){
@@ -339,7 +314,7 @@ get.tc.correction.germline = function( obs, tc, CNt, CNn=2, Fg = 50){
 get.cor.tumor.content.CNV = function(x,y){
   if(is.null(x)) return(NULL)
   x$freq.tc = NA
-  
+  x$freq = NA
   w = rbind()
   # z = subset(x, assignedCNV=='Gain')
   z = x
@@ -350,6 +325,8 @@ get.cor.tumor.content.CNV = function(x,y){
     if(length(ix)>0) z=z[-ix,]
     if (is.null(z)) return(x)
   }
+  
+  x$freq = z$freq.T.up
   
   if(nrow(z)>0){
     
@@ -363,21 +340,7 @@ get.cor.tumor.content.CNV = function(x,y){
     }
     w = rbind(w,z)
   }
-  
-  #   z = subset(x, assignedCNV=='Loss')
-  #   
-  #   if(nrow(z)>0){
-  #     for(i in 1:nrow(z)) z$cell[i] = 100 - get.tc.correction.germline( z$freq.T.dw[i], y$tc, z$CN[i])
-  # 
-  #     if(y$man){
-  #       idX = which(z$chrom=="chrX")
-  #       idY = which(z$chrom=="chrY")
-  #       if(length(idX)>0) for(i in idX) z$cell[i] = 100-get.tc.correction.germline( z$freq.T.dw[i], y$tc, z$CN[i], CNn=1)
-  #       if(length(idY)>0) for(i in idY) z$cell[i] = 100-get.tc.correction.germline( z$freq.T.dw[i], y$tc, z$CN[i], CNn=1)
-  #     }
-  #     w = rbind(w,z)
-  #   }
-  return(w)
+   return(w)
 }
 
 
@@ -394,16 +357,7 @@ get.clonality.CNV = function(x, y ){
       ix = which(x$cell>100)
       if(length(ix)>0) x$cell[ix] = 100
       
-      #       if(y$man){
-      # 
-      #         idX = which(z$chrom=="chrX")
-      #         idY = which(z$chrom=="chrY")
-      #         
-      #         if(length(idX)>0) x$cell[idX] =  ifelse( x$freq.tc<60 & x$freq.tc>40 , 100, min( c(100, round( x$freq.tc, 0) -50 ) ) )
-      #         if(length(idY)>0) x$cell[idY] =  ifelse( x$freq.tc<60 & x$freq.tc>40 , 100, min( c(100, round( x$freq.tc, 0) -50 ) ) )
-      # 
-      #       }
-      
+    
       ix = which(is.na(x$cell))
       if(length(ix)>0){
         if(length(ix)!=nrow(x)){
@@ -474,7 +428,7 @@ get.CNV.without.mutations = function(c, m, chr=chr_levels){
 
 # This function generate the dataset for the clonality.plot
 prepare.dataset = function(m=NULL, c=NULL){
-  mcol = c('sample','type','cell','alt.type','gname','id','assignedCNV','CN','CN_raw')
+  mcol = c('sample','type','cell','alt.type','gname','id','assignedCNV','CN','CN_raw','freq','freq.tc')
   if(!is.null(m) & is.null(c)){
     return(m[,mcol])
   }else if(is.null(m)  & !is.null(c)){
@@ -485,7 +439,7 @@ prepare.dataset = function(m=NULL, c=NULL){
 }
 
 prepare.dataset.1set = function(c){
-  mcol = c('sample','type','cell','alt.type','gname','id','assignedCNV','CN','CN_raw')
+  mcol = c('sample','type','cell','alt.type','gname','id','assignedCNV','CN','CN_raw','freq','freq.tc')
   if(!is.null(c)){
     return( c[,mcol] )
   } else {
@@ -664,7 +618,26 @@ clone.composition.plot.overall= function(x, cl = color_clone_composition){
   }
 }
 
-
+clone.composition.plot.overall.ply= function(x, cl = color_clone_composition){
+  if(!is.null(x)){
+    mapper = as.list(x$composition)
+    names(mapper) = x$sample
+    map_labeller <- function(variable,value){
+      return(mapper[value])
+    }
+    names(cl)=c("monoclonal",'biclonal','polyclonal')
+    x$composition = factor(x$composition, levels=c("M","B","P"))
+    m = melt(x[,c('sample','polyclonal','biclonal','monoclonal')], id.vars = c("sample")) #1,4:2
+    m$sample = factor(as.character(m$sample), x$sample[order(x$composition,x$monoclonal)] ) # ,x$biclonal,x$polyclonal
+    m$value = m$value*100
+    colnames(m)[2:3] = c('composition','percentage')
+    
+  
+    return(m)
+  } else{
+    return(NULL)
+  }
+}
 
 bar.composition = function( x , cl = color_clone_composition){
   nn = c('Monoclonal','Biclonal','Polyclonal'); names(nn) = c('M','B','P')
@@ -678,7 +651,6 @@ bar.composition = function( x , cl = color_clone_composition){
     geom_bar(stat="identity",width = .9, color="black")+
     geom_text(aes(y=p+2.5, label=label))+
     geom_segment(aes(x=-Inf,xend=-Inf,y=0,yend=100),col="black")+
-    # geom_segment(aes(y=-Inf,yend=-Inf,x=1,xend=3),col="black")+
     scale_x_discrete(labels=nn[as.character(y$Var1)])+
     scale_fill_manual(values=cl)+
     ylab("Samples (%)")+xlab("")+

@@ -1,5 +1,5 @@
 library(shiny)
-
+library(DT)
 source("functions.R")
 
 options(shiny.maxRequestSize = 30*1024^2)
@@ -158,7 +158,6 @@ cloneR= function(sample_filename, mutation_filename, cnv_filename, snp_folder, g
   
   dataset_list = lapply( dataset_list, set.gene.category, gl=gene_list )
   
- 
   # --------------------------------------------
   # GENERATING OUTPUT and REPORT
   # --------------------------------------------
@@ -235,11 +234,30 @@ cloneR= function(sample_filename, mutation_filename, cnv_filename, snp_folder, g
   
   cat("Saving R image...")
   
+  
   sInfo = sessionInfo()
-  save.image(file=paste( analysis, "cloneR_image.RData",sep="/"))
+  save(list = ls(all = TRUE),file=paste( analysis, "cloneR_image.RData",sep="/"))
   cat("Done\n")
   
-  return(list(comp=composition, dataset=dataset))
+  composition$p_monoclonal =  round(composition$monoclonal,3)*100
+  composition$p_biclonal   =  round(composition$biclonal,3)*100
+  composition$p_polyclonal =  round(composition$polyclonal,3)*100
+  
+  
+  ret = list(comp=composition, dataset=dataset[,c('sample', 'alt.type','gname','id','freq','freq.tc','CN',"CN_raw",'cell',"category")])
+  ret$comp    = unrowname(ret$comp)
+  
+
+  ret$dataset         = unrowname(ret$dataset)
+  ret$dataset$CN_raw  = round(ret$dataset$CN_raw, 2)
+  ret$dataset$freq    = round(ret$dataset$freq,2)
+  ret$dataset$freq.tc = round(ret$dataset$freq.tc,2)
+  ret$dataset$cell    = round(ret$dataset$cell,2)
+  
+  colnames(ret$dataset) = c('Sample','Alteration','HUGO symbol','id','Allele Frequency (AF)', 'estimated AF','Copy Number (CN)','CN_raw','Clonality','Gene category')
+  
+
+  return(ret)
 }
 
 
@@ -284,25 +302,39 @@ shinyServer(function(input, output) {
       
      
       # TAB Clone Composition
-      output$global_report = renderPlot({
+      output$global_report = renderPlotly({
         results = CLONER()
         
         current$dataset = results[["dataset"]]
         current$composition = results[["comp"]]
      
-        p = clone.composition.plot.overall(current$composition)
         
-        return(p)        
+        m = clone.composition.plot.overall.ply(current$composition)
+        print(m)
+        plot_ly(m, y=sample, x=percentage,  type='bar', orientation = "h", color=composition, colors=color_clone_composition) %>%
+        layout(p,barmode = 'stack',
+                   yaxis=list(title='', tickfont=list(family = "Arial, sans-serif")),
+                   xaxis=list(title='Alterations (%)', titlefont=list(family = "Arial, sans-serif"), tickfont=list(family = "Arial, sans-serif"))
+        )
+        
+        
+        
       })
       
       # # TAB Summary
-       output$composition   = renderTable({
-          return(current$composition)   
+       output$composition   = DT::renderDataTable({
+         comp = current$composition[,c("sample","n","n_monoclonal","n_biclonal","n_polyclonal","p_monoclonal","p_biclonal","p_polyclonal","composition" )]
+         colnames(comp) = c('Sample','Alterations','Monoclonal (n)','Biclonal (n)','Polyclonal (n)','Monoclonal (%)','Biclonal (%)', 'Polyclonal (%)', 'Compostion')
+         
+         DT::datatable(comp, options = list(orderClasses = TRUE, pageLength = 100))
+         
        })
        
       # TAB Alteration Clonalities
-       output$dataset       = renderTable({
-          return(current$dataset)   
+       output$dataset       = DT::renderDataTable({
+         
+         
+         DT::datatable(current$dataset, options = list(orderClasses = TRUE, pageLength = 100))
        })
       
 })
