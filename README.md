@@ -1,4 +1,4 @@
-<img src='www/Cloner_logo.png' width='200' style='float: right'/>
+<img src='www/Cloner_logo.png' height='400' style='float: right'/>
 =======
 
 [CloneR] is a **R** application that evaluates the clone composition of a tumour. Starting from molecular data (i.e. results od whole exome/genome sequences and/or genome-wide SNP arrays) and sample specific information (i.e. gender, tumour purity), it estimates:
