@@ -7,8 +7,10 @@
 - the clone compostion of the tumour (i.e. Monoclonal, Biclonal and Polyclonal)
 For each sample, CloneR estimetes the density distribution of the alterations clonalities. If specifed, CloneR produces an heatmap of the alteration clonality of a list of selected genes. 
 
+CloneR is implemented as a R **Shiny** application with interactive plots generated using [Plotly](https://plot.ly)
+
 ## Usage
-The easiest way to run CloneR is to install **shiny** package (and the required dependencies) in R, and use the function `runGithub()`. See the example below,
+The easiest way to run CloneR is to install **Shiny** package (and the required dependencies) in R, and use the function `runGithub()`. See the example below,
 ```
 install.packages("shiny")
 install.packages("shinyjs")
