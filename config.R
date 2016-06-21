@@ -1,4 +1,5 @@
-pkgs = c('RColorBrewer','plyr','ggplot2','GenomicRanges','wordcloud','reshape2','grid', 'optparse','grDevices')
+pkgs = c('RColorBrewer','plyr','ggplot2','GenomicRanges','wordcloud','reshape2','grid', 'optparse','grDevices','matrixStats','dplyr','tidyr', 'reshape2','DT')
+
 lib = installed.packages()
 installed=pkgs %in% rownames(lib)
 not_installed = which(!installed)
