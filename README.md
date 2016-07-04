@@ -14,10 +14,17 @@ The easiest way to run CloneR is to install **Shiny** package (and the required 
 ```
 install.packages("shiny")
 install.packages("shinyjs")
-
+install.packages("shinythemes")
+install.packages("DT")
 install.packages("plotly")
 
-runGitHub("CloneR","your_username")
+library(shiny)
+library(shinyjs)
+library(plotly)
+library(shinythemes)
+library(DT)
+
+runGitHub("CloneR","matteocereda")
 ```
 
 ## Contributors
