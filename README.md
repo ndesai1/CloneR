@@ -27,6 +27,15 @@ library(DT)
 runGitHub("CloneR","matteocereda")
 ```
 
+## Input files
+
+- Sample file (tab separated). Columns: sample, gender (man=T, female=F), tumor content (i.e. 0.7)
+
+- Mutation file (tab separated). Columns: sample, chr, position , reference, variant , allele frequency, gene symbol, mutation type (i.e. SNV, InDel)
+
+- CNV file (tab separated). Columns: sample, chr, start , end, cnv type, CN, CN raw
+
+
 ## Contributors
 
 CloneR has been designed by Dr **Matteo Cereda** and Prof **Francesca Ciccarelli**. 
