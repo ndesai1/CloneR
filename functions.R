@@ -1,7 +1,7 @@
 # Loading Configuration #####
 # print.logo = function(){
 #   cat("\n")
-#   cat("██████╗██╗      ██████╗ ███╗   ██╗███████╗██████╗\n") 
+#   cat("██████╗██╗      ██████╗ ███╗   ██╗███████╗██████╗\n")
 #   cat("██╔════╝██║     ██╔═══██╗████╗  ██║██╔════╝██╔══██╗\n")
 #   cat("██║     ██║     ██║   ██║██╔██╗ ██║█████╗  ██████╔╝\n")
 #   cat("██║     ██║     ██║   ██║██║╚██╗██║██╔══╝  ██╔══██╗\n")
@@ -39,14 +39,14 @@ read.config.file=function(filename){
         }else{
           stop(paste("No sample correctly provided in file ", filename," /nCheck the format of the input file", sep="", coll=""))
         }
-      } 
+      }
       if( sum(b)>0 ){
         if(sum(b)!=nrow(x)){
           x = x[ which(!is.na(x$man)),]
         }else{
           stop(paste("No sample correctly provided in file ", filename," /nCheck the format of the input file", sep="", coll=""))
         }
-      } 
+      }
     }
     return(x)
   } else {
@@ -69,7 +69,7 @@ read.gene.file=function(filename){
 
 # This function read the mutations of each sample
 # Tab-separeted file
-# columns: sample, chr, position , reference, variant , coverage reference , coverage variant, allele frequency, gene symbol, mutation type
+# columns: sample, chr, position , reference, variant ,  allele frequency, gene symbol, mutation type
 read.mutation.file=function(filename){
   if(!is.null(filename)){
     x = read.table(filename, h=F, sep='\t')
@@ -82,14 +82,14 @@ read.mutation.file=function(filename){
       x$assignedCNV=NA
       x$CN = 2
       x$CN_raw = 2
-      
+
     } else {
       stop("read.mutation.file: missing fields in mutation file ")
     }
   } else {
     stop("read.mutation.file: Mutation file not found")
   }
-  
+
   x$assignedCNV = NA
   return(x)
 }
@@ -150,7 +150,7 @@ read.SNP.file=function(filename){
         x$freq.N = x$freq.N*100
       }
       if(length(grep("chr",x$chrom))==0){
-        x$chrom = paste( "chr", x$chrom, sep="", coll="")      
+        x$chrom = paste( "chr", x$chrom, sep="", coll="")
       }
       return(x)
     }else{
@@ -171,17 +171,17 @@ read.SNP.file=function(filename){
 # }
 
 get.tc.correction.somatic = function( obs, tc, CNt, CNn=2){
-  return( min( 
-    
+  return( min(
+
     obs * ( 1 + (  ( CNn*(1-tc) )/( CNt * tc) ) )  ,
-    
+
     100))
 }
 
 get.cor.tumor.content = function(x,y){
-  
+
   for(i in 1:nrow(x))  x$freq.tc[i] = get.tc.correction.somatic(x$freq[i], y$tc, x$CN_raw[i], 2 )
-  
+
   if(y$man){
     idX = which(x$chrom=="chrX")
     idY = which(x$chrom=="chrY")
@@ -292,15 +292,15 @@ get.hetero.SNPs.freq.in.CNV.regions = function(c,s){
 # correzione per il tc (germinali)
 
 get.tc.correction.germline = function( obs, tc, CNt, CNn=2, Fg = 50){
-  
+
   if(obs<60 & obs>40){
     return(50)
   }else{
-    
-    return( min( 
-      
+
+    return( min(
+
       ( obs * ( 1 + (  ( CNn*(1-tc) )/( CNt * tc) ) ) ) - (Fg * (  ( CNn*(1-tc) )/( CNt * tc) ) ) ,
-      
+
       100))
   }
 }
@@ -325,13 +325,13 @@ get.cor.tumor.content.CNV = function(x,y){
     if(length(ix)>0) z=z[-ix,]
     if (is.null(z)) return(x)
   }
-  
+
   x$freq = z$freq.T.up
-  
+
   if(nrow(z)>0){
-    
+
     for(i in 1:nrow(z)) z$freq.tc[i] = get.tc.correction.germline( z$freq.T.up[i], y$tc, z$CN_raw[i])
-    
+
     if(y$man){
       idX = which(z$chrom=="chrX")
       idY = which(z$chrom=="chrY")
@@ -348,16 +348,16 @@ get.cor.tumor.content.CNV = function(x,y){
 get.clonality.CNV = function(x, y ){
   if(!is.null(x)){
     if(nrow(x)>0){
-      
-      x$cell = ifelse( x$freq.tc<60 & x$freq.tc>40 , 
-                       100 , 
+
+      x$cell = ifelse( x$freq.tc<60 & x$freq.tc>40 ,
+                       100 ,
                        (round(x$freq.tc, 0) - 50 )*2
       )
-      
+
       ix = which(x$cell>100)
       if(length(ix)>0) x$cell[ix] = 100
-      
-    
+
+
       ix = which(is.na(x$cell))
       if(length(ix)>0){
         if(length(ix)!=nrow(x)){
@@ -465,15 +465,15 @@ set.gene.category = function(m, gl=NULL){
 # This function create the outout folder
 create.output.folder = function (s, odir, title=NULL) {
   if(!dir.exists(odir)) dir.create(odir)
-  
+
   job     = paste0('Job',length(grep(".Job", list.dirs(path = odir, recursive =F)))+1)
   timer    = format(Sys.time(), "%Y-%m-%d.%H_%M_%S")
-  
+
   # if(!is.null(title)) job=paste(title,job,sep='.')
-   
+
   analisys = paste(job,timer, sep=".")
   analisys = paste0(odir,"/", analisys )
-   
+
   dir.create( analisys )
   for(i in s$sample ) dir.create( paste0( analisys, "/", i))
   return(analisys)
@@ -487,22 +487,22 @@ get.clone.composition = function(x, upper=80, lower=35){
   y = z = NULL
   if(!is.null(x)){
     if(sum(x$type=="Mutation")>0){
-      y = ddply(subset(x, type=="Mutation"), .(sample), summarise, 
+      y = ddply(subset(x, type=="Mutation"), .(sample), summarise,
                 n = length(cell),
-                n_monoclonal = sum(cell>=unique(upper)), 
+                n_monoclonal = sum(cell>=unique(upper)),
                 n_biclonal   = sum(cell<unique(upper) & cell>=unique(lower)),
                 n_polyclonal = sum(cell<unique(lower)))
     }
-    
+
     if(sum(x$type=="CNV")>0){
-      
-      z = ddply(unique(subset(x, type=="CNV")[,c(1:4,6,11,12)]), .(sample), summarise, 
+
+      z = ddply(unique(subset(x, type=="CNV")[,c(1:4,6,11,12)]), .(sample), summarise,
                 n = length(cell),
-                n_monoclonal = sum(cell>=unique(upper)), 
+                n_monoclonal = sum(cell>=unique(upper)),
                 n_biclonal   = sum(cell<unique(upper) & cell>=unique(lower)),
                 n_polyclonal = sum(cell<unique(lower)))
     }
-    
+
     if(!is.null(y) & !is.null(z)){
       y$n = y$n + z$n
       y$n_monoclonal = y$n_monoclonal + z$n_monoclonal
@@ -513,11 +513,11 @@ get.clone.composition = function(x, upper=80, lower=35){
     }else if(is.null(y) & is.null(z)){
       return(NULL)
     }
-    
+
     y$monoclonal = y$n_monoclonal / y$n
     y$biclonal   = y$n_biclonal / y$n
     y$polyclonal = y$n_polyclonal / y$n
-    
+
     code = c("M","B","P"); names(code)=c('monoclonal','biclonal','polyclonal')
     y$composition = code[names(which.max(y[,c('monoclonal','biclonal','polyclonal')]))]
   }
@@ -530,8 +530,8 @@ get.clone.composition.OLD = function(x, upper=80, lower=35){
   x$lower=lower
   y = NULL
   if(!is.null(x)){
-    y = ddply(x, .(sample), summarise, 
-              monoclonal = sum(cell>=unique(upper))/length(cell), 
+    y = ddply(x, .(sample), summarise,
+              monoclonal = sum(cell>=unique(upper))/length(cell),
               biclonal   = sum(cell<unique(upper) & cell>=unique(lower))/length(cell),
               polyclonal = sum(cell<unique(lower))/length(cell))
     code = c("M","B","P"); names(code)=c('monoclonal','biclonal','polyclonal')
@@ -544,22 +544,22 @@ get.clone.composition.OLD = function(x, upper=80, lower=35){
 clone.composition.plot= function(x, cl=color_clone_composition){
   names(cl)=c("monoclonal",'biclonal','polyclonal')
   x$composition = factor(x$composition, levels=c("M","B","P"))
-  
+
   if(!is.null(x)){
     mapper = as.list(x$composition)
     names(mapper) = x$sample
     map_labeller <- function(variable,value){
       return(mapper[value])
     }
-    
+
     m = melt(x[,c('sample','polyclonal','biclonal','monoclonal')], id.vars = c("sample")) #1,4:2
     colnames(m)[2] = 'composition'
     p=ggplot(m, aes(x=sample,y=value,fill=composition))+
       geom_bar(width=0.5, stat="identity")+
       geom_segment(aes(x=-Inf,xend=-Inf,y=0,yend=1),col="black")+
       ylab("Alterations (%)")+xlab("")+
-      scale_fill_manual(values=cl, 
-                        guide = guide_legend(title = NULL), 
+      scale_fill_manual(values=cl,
+                        guide = guide_legend(title = NULL),
                         labels=c("Clonality<35%",'35%<Clonality<80%','Clonality>80%'))+
       scale_y_continuous(labels=c("0","25","50","75","100"))+
       facet_grid(sample ~ ., labeller=map_labeller)+
@@ -570,13 +570,13 @@ clone.composition.plot= function(x, cl=color_clone_composition){
                            axis.text        = element_text(color="black",size=10),
                            axis.text.y      = element_blank(),
                            axis.ticks.y     = element_blank(),
-                           strip.background = element_rect(fill=NA, colour=NA), 
+                           strip.background = element_rect(fill=NA, colour=NA),
                            strip.text.y     = element_text(angle=0,size=12, colour="black")
       )+
       coord_equal(1/0.1)+
       coord_flip()+
       geom_bar(width=0.5, stat="identity",color="black", show.legend=FALSE)
-    
+
     return(p)
   } else{
     return(NULL)
@@ -599,8 +599,8 @@ clone.composition.plot.overall= function(x, cl = color_clone_composition){
       geom_bar(width=0.9, stat="identity")+
       geom_segment(aes(x=-Inf,xend=-Inf,y=0,yend=1),col="black")+
       ylab("Alterations (%)")+xlab("")+
-      scale_fill_manual(values=cl, 
-                        guide = guide_legend(title = NULL), 
+      scale_fill_manual(values=cl,
+                        guide = guide_legend(title = NULL),
                         labels=c("Clonality<35%",'35%<Clonality<80%','Clonality>80%'))+
       scale_y_continuous(labels=c("0","25","50","75","100"))+
       theme_cloneR()+theme(panel.background = element_blank(),
@@ -631,8 +631,8 @@ clone.composition.plot.overall.ply= function(x, cl = color_clone_composition){
     m$sample = factor(as.character(m$sample), x$sample[order(x$composition,x$monoclonal)] ) # ,x$biclonal,x$polyclonal
     m$value = m$value*100
     colnames(m)[2:3] = c('composition','percentage')
-    
-  
+
+
     return(m)
   } else{
     return(NULL)
@@ -641,7 +641,7 @@ clone.composition.plot.overall.ply= function(x, cl = color_clone_composition){
 
 bar.composition = function( x , cl = color_clone_composition){
   nn = c('Monoclonal','Biclonal','Polyclonal'); names(nn) = c('M','B','P')
-  
+
   y = table(x$composition)
   y = melt(y)
   y$Var1  = factor(y$Var1, levels = names(nn))
@@ -719,10 +719,10 @@ word_cloud = function (pdr) {
 plot.drivers = function (drvrs, gg_builder, a ) {
   # browser()
   drvrs=ddply(drvrs, .(cell,Alteration_type, original), summarise, gname=paste(gname, collapse=","))
-  
+
   plvs=c("SNV","InDel","Gain","Loss"); names(plvs)=c("SNV","InDel","Gain","Loss")
   plvs = plvs[which(names(plvs)%in%a)]
-  
+
   p.drvrs=rbind()
   for(j in unique((drvrs$Alteration_type))){
     dd1 = subset(gg_builder,group == which(plvs == j) )
@@ -739,11 +739,11 @@ plot.drivers = function (drvrs, gg_builder, a ) {
     }
   }
   p.drvrs      = as.data.frame(p.drvrs, stringsAsFactors=F)
-  
+
   p.drvrs$code = with( p.drvrs, paste(1:nrow(p.drvrs),":", Alteration_type, ":",gname, sep="",coll=""))
   p.drvrs$nx=0
   p.drvrs$ny=0
-  
+
   p.drvrs = word_cloud(p.drvrs)
   return(p.drvrs)
 }
@@ -778,7 +778,7 @@ prepare.dataset.to.density.plot = function(y){
   dd = NULL
   dd = as.data.frame( rbind(subset(y, Alteration_type%in%c("SNV","InDel"))[,c('Alteration_type','cell')], cx[,c('Alteration_type','cell')]) , check.names=F)
   dd$Alteration_type=factor(dd$Alteration_type, levels=  c("SNV","InDel","Gain","Loss"))
-  
+
   m = with(dd, table(Alteration_type, cell))
   ix = apply(m,1, function(x) sum(x!=0)==1)
   if(sum(ix)>0){
@@ -800,55 +800,55 @@ prepare.dataset.to.density.plot = function(y){
 density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
   if(!is.null(x)){
     colnames(x)[4]='Alteration_type'
-    px = NULL 
-    
+    px = NULL
+
     # SELECT ONLY MUTATIONS THAT DO NOT UNDERGO CNVS
-    
+
     # if(sum(x$type=="Mutation")>0){
     # px = subset(x, (type=="Mutation" & is.na(assignedCNV)) | type=="CNV")[,c('cell','Alteration_type','gname','category','id')]
     px = subset(x, type=="Mutation" | type=="CNV")[,c('cell','Alteration_type','gname','category','id')]
     # }else{
     # px = x[,c('cell','Alteration_type','gname','category','id')]
     # }
-    
+
     if(nrow(px)<2){
       cat("density.plot: LESS THEN 2 ALTERATIONS TO DRAW THE PLOT")
       return(NULL)
     }
-    
+
     px = check.alterations.per.category( px )
-    
-    # PREPARE Dataset 
-    
+
+    # PREPARE Dataset
+
     dd = prepare.dataset.to.density.plot(px)
-    
-    # Density Plot 
+
+    # Density Plot
     p =
-      ggplot(dd, aes(x=cell,fill=Alteration_type)) + geom_density(alpha=.5, adjust=4) + aes(y = ..count..) + 
+      ggplot(dd, aes(x=cell,fill=Alteration_type)) + geom_density(alpha=.5, adjust=4) + aes(y = ..count..) +
       geom_vline(xintercept=80, linetype="dashed", color="grey")+
       geom_vline(xintercept=35, linetype="dashed", color="grey")+
-      scale_fill_manual(values=fill_cols, 
+      scale_fill_manual(values=fill_cols,
                         guide = guide_legend(title = NULL)
       )
-    
+
     # leg = g_legend(p)
-    
-    # PLOT POINTS FOR DRIVERS 
-    
+
+    # PLOT POINTS FOR DRIVERS
+
     gg  = ggplot_build(p)$data[[1]]
     gga = unique(ggplot_build(p)$plot[[1]]$Alteration_type) #     ptmp = ggplot(dd, aes(x=cell,fill=Alteration_type)) + geom_histogram() #     gtmp =  ggplot_build(ptmp)$data[[1]]
     ymax = max(gg$y)
     ymed = ymax/2
     lmax = ifelse( ymax>=0.5, round(ymax), 1)
     lmed = ifelse(lmax==1, 0.5, ifelse( ymed>0.5, round(ymed), 0.5))
-    
+
     drivers=subset(px, !is.na(category) )
-    
+
     if(nrow(drivers)>0){
       p.drivers = plot.drivers(drivers, gg, gga )
-      
+
       ishape = c(19,17); names(ishape)=c("Yes","No")
-      
+
       if(names==T){
         p= p + geom_point(data=p.drivers, aes(x = cell, y=y, shape=original), colour="black", show.legend = F)+
           geom_text(data=p.drivers, aes(x = cell,y=y,label=gname, family=""),  size=rel(3.5), hjust=rel(.75), vjust=rel(-.25), show.legend = F)
@@ -857,10 +857,10 @@ density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
           p = p +   geom_segment(data=subset(p.drivers,nx>0), aes(x = cell,y=y,xend=nx,yend=ny))
         }
       }
-      
+
     }
     #----
-    
+
     p= p +theme_cloneR()+
       theme(    legend.position  = "top",
                 legend.text      = element_text(color="black",size=10),
@@ -890,7 +890,7 @@ get.clonality.gene.of.interest = function(x){
     colnames(m) = c('Gene','Sample','Alteration_clonality')
     return(m)
   }else{
-    return(NULL)    
+    return(NULL)
     warning("NO gene of interest provided: upload your gene list")
   }
 }
@@ -910,7 +910,7 @@ heatmap.genes = function( x ){
     colnames(m)[3] ='Alteration_clonality'
     myPalette <- colorRampPalette(c("white",brewer.pal(9, "Reds")), space="Lab")
     col = myPalette(100)
-    mx = max(m$Alteration_clonality) 
+    mx = max(m$Alteration_clonality)
     mn = min(m$Alteration_clonality)
     if(mn==mx) mn=0
     p = ggplot(m, aes(y=Var2,x=Var1, fill=Alteration_clonality))+
@@ -919,15 +919,15 @@ heatmap.genes = function( x ){
       # scale_fill_gradientn(colours = myPalette(100), name='Alteration clonality', limits = c(mn,mx), breaks =c(mn,mx), labels=as.character(c(mn,mx)))+  #,title.position = "top",label.position="bottom"
       scale_fill_gradientn(colours = myPalette(100), name='Alteration clonality', limits = c(0,100), breaks =c(0,50,100), labels=as.character(c(0,50,100)))+  #,title.position = "top",label.position="bottom"
       theme_cloneR()+
-      theme(legend.position  = 'top', 
+      theme(legend.position  = 'top',
             legend.title     = element_text(color="black",size=12),#rel(1.5)
             legend.text      = element_text(color="black",size=12),
             axis.text        = element_text(color="black",size=10),
             axis.text.x      = element_text( hjust=1,angle=45), #vjust=0.5,angle=45,
             axis.text.y      = element_blank(),
             axis.ticks.y     = element_blank(),
-            strip.background = element_rect(fill=NA, color="black"), 
-            strip.text       = element_text(size=12)) + 
+            strip.background = element_rect(fill=NA, color="black"),
+            strip.text       = element_text(size=12)) +
       xlab("") +ylab("")
   }else{
     warning("NO gene of interest provided: upload your gene list")
@@ -943,38 +943,38 @@ g_legend<-function(a.gplot){
   legend
 }
 savePlot = function (analisys, sample, composition, density_plot, ht_genes, gene_list = NULL) {
-  
+
   ccR='cR_report'
   ccR_version='CloneR v.1 2016'
-  
+
   pdf(file=paste( analisys, "/", sample, "/", ccR, ".pdf",sep="", coll="" ),width = unit(8.27, "inches"), height = unit(11.69, "inches"))
-  
-  pushViewport(viewport(layout=grid.layout(8, 3, widths=c(0.05, 1, 0.1), heights=c(.05,.01,.15,.01, 0.4,.01,.2 ,.05)))) 
-  
+
+  pushViewport(viewport(layout=grid.layout(8, 3, widths=c(0.05, 1, 0.1), heights=c(.05,.01,.15,.01, 0.4,.01,.2 ,.05))))
+
   grid.text( sample , vp = viewport(layout.pos.row = 1, layout.pos.col = 2), gp=gpar(fontface='bold'), just="center")
-  
+
   grid.text("A.", vp = viewport(layout.pos.row = 2, layout.pos.col = 1), gp=gpar(fontface='bold'), just="left")
-  
+
   if(!is.null(composition)){
     print( composition, vp=viewport(layout.pos.row=3,layout.pos.col=2))
   }
-  
+
   grid.text("B.", vp = viewport(layout.pos.row = 4, layout.pos.col = 1), gp=gpar(fontface='bold'), just="left")
-  
+
   if(!is.null(density_plot)){
     print(density_plot, vp=viewport(layout.pos.row=5,layout.pos.col=2:3))
     #     density_plot$vp = viewport(layout.pos.row=5,layout.pos.col=2:3)
-    #     grid.draw(density_plot)                       
+    #     grid.draw(density_plot)
   }
-  
+
   grid.text("C.", vp = viewport(layout.pos.row = 6, layout.pos.col = 1), gp=gpar(fontface='bold'), just="left")
-  
+
   if(!is.null(gene_list)){
     if(!is.null(ht_genes)){
       print(ht_genes,    vp=viewport(layout.pos.row=7,layout.pos.col=2))
     }
-  } 
-  
+  }
+
   grid.text(ccR_version, vp = viewport(layout.pos.row = 8, layout.pos.col = 2))
   dev.off()
 }
@@ -984,25 +984,25 @@ global_report = function(analysis, composition ){
   if(nrow(composition)>1){
     ccR='cR_overall_clone_composition'
     ccR_version='CloneR v.1 2016'
-    
+
     pdf(file=paste(analysis, "/", ccR, ".pdf",sep="", coll="" ),width = unit(8.27, "inches"), height = unit(11.69, "inches"))
-    
-    pushViewport(viewport(layout=grid.layout(4, 5, widths=c(0.01, .48, 0.02, .48, 0.01), heights=c( .05, .45,.45, .05)))) 
-    
+
+    pushViewport(viewport(layout=grid.layout(4, 5, widths=c(0.01, .48, 0.02, .48, 0.01), heights=c( .05, .45,.45, .05))))
+
     grid.text("A.", vp = viewport(layout.pos.row = 1, layout.pos.col = 1), gp=gpar(fontface='bold'), just="left")
-    
+
     p = clone.composition.plot.overall(composition)
     leg = g_legend(p)
     print(p+theme(legend.position='none') , vp=viewport(layout.pos.row=2:3,layout.pos.col=2))
-    
+
     grid.text("B.", vp = viewport(layout.pos.row = 1, layout.pos.col = 3), gp=gpar(fontface='bold'), just="left")
-    
+
     print( bar.composition(composition), vp=viewport(layout.pos.row=2,layout.pos.col=4))
-    
+
     leg$vp =viewport(layout.pos.row=3,layout.pos.col=4)
     grid.draw(leg)
     grid.text(ccR_version, vp = viewport(layout.pos.row = 4, layout.pos.col = 3), just="left")
-    
+
     dev.off()
   }
 }
