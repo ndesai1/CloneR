@@ -35,6 +35,9 @@ runGitHub("CloneR","matteocereda")
 
 - CNV file (tab separated). Columns: sample, chr, start , end, cnv type, CN, CN raw
 
+- heterogyzous germline SNPs (tab separated, one file per sample). columns: id, chrom, position, allele freq in normal sample, allele freq in tumor
+
+
 
 ## Contributors
 
