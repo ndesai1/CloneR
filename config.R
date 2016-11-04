@@ -11,6 +11,10 @@ color_clone_composition=c( 'M' = rgb(0,162,205, maxColorValue = 255),
                            'B' = rgb(243,130,153, maxColorValue = 255),
                            'P' = rgb(223,207,0, maxColorValue = 255))
 
+color_clone_composition_pl=c( 'monoclonal' = rgb(0,162,205, maxColorValue = 255),
+                           'biclonal' = rgb(243,130,153, maxColorValue = 255),
+                           'polyclonal' = rgb(223,207,0, maxColorValue = 255))
+
 color_density_plot=c( 'SNV' = rgb(172,152,199, maxColorValue = 255),
                       'InDel' = rgb(214,147,114, maxColorValue = 255),
                       'Gain' = rgb(53,154,95, maxColorValue = 255),
