@@ -256,7 +256,7 @@ shinyServer(function(input, output) {
               print(outdir)
               print(snp_folder)
 
-              if(!is.null(outdir) & !is.null(sample_filename) & ( !is.null(mutation_filename) | (!is.null(cnv_filename) & is.null(snp_folder)) ) ){
+              if(!is.null(outdir) & !is.null(sample_filename) & ( !is.null(mutation_filename) | (!is.null(cnv_filename)) ) ){
 
                 cloneR(sample_filename
                        , mutation_filename
@@ -279,14 +279,15 @@ shinyServer(function(input, output) {
         current$composition = results[["comp"]]
 
 
-        # m = clone.composition.plot.overall.ply(current$composition)
-        # print(m)
-        # plot_ly(m, y=sample, x=percentage,  type='bar', orientation = "h", color=composition, colors=color_clone_composition) %>%
-        # layout(p,barmode = 'stack',
-        #            yaxis=list(title='', tickfont=list(family = "Arial, sans-serif")),
-        #            xaxis=list(title='Alterations (%)', titlefont=list(family = "Arial, sans-serif"), tickfont=list(family = "Arial, sans-serif"))
-        # )
-        #
+        m = clone.composition.plot.overall.ply(current$composition)
+        print(m)
+        # plot_ly(m, y=sample, x=percentage,  type='bar', orientation = "h", color=composition, colors=color_clone_composition)
+        with(m,plot_ly(m, y=sample, x=percentage,  type='bar', orientation = "h", color=composition, colors=color_clone_composition))%>%
+        layout(p,barmode = 'stack',
+                   yaxis=list(title='', tickfont=list(family = "Arial, sans-serif")),
+                   xaxis=list(title='Alterations (%)', titlefont=list(family = "Arial, sans-serif"), tickfont=list(family = "Arial, sans-serif"))
+        )
+
 
 
       })
