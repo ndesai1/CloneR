@@ -278,7 +278,7 @@ shinyServer(function(input, output) {
         current$dataset = results[["dataset"]]
         current$composition = results[["comp"]]
 
-
+        browser()
         m = clone.composition.plot.overall.ply(current$composition)
         print(m)
         # plot_ly(m, y=sample, x=percentage,  type='bar', orientation = "h", color=composition, colors=color_clone_composition)
