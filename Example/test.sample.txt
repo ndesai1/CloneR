@@ -1,0 +1,2 @@
+Test_sample_1	TRUE	0.6
+Test_sample_2	TRUE	0.7
