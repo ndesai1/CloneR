@@ -1,25 +1,4 @@
-# Loading Configuration #####
-# print.logo = function(){
-#   cat("\n")
-#   cat("██████╗██╗      ██████╗ ███╗   ██╗███████╗██████╗\n")
-#   cat("██╔════╝██║     ██╔═══██╗████╗  ██║██╔════╝██╔══██╗\n")
-#   cat("██║     ██║     ██║   ██║██╔██╗ ██║█████╗  ██████╔╝\n")
-#   cat("██║     ██║     ██║   ██║██║╚██╗██║██╔══╝  ██╔══██╗\n")
-#   cat("╚██████╗███████╗╚██████╔╝██║ ╚████║███████╗██║  ██║\n")
-#   cat("╚═════╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝\n")
-#   cat(  "\n")
-# }
-
-# print.logo()
-
-# cat("Loading configuration.R ...")
-source("config.R")
-# cat("Done\n")
-
-# Loading Functions #####
-
-# cat("Loading Functions ...")
-# Loading data functions =======
+# LOADING DATA functions =================================================================================================
 
 # This function read the feature of each sample
 # Tab-separeted file
@@ -78,11 +57,13 @@ read.mutation.file=function(filename){
       x$type="Mutation"
       if(length(grep("chr",x$chrom))==0) x$chrom=paste('chr',x$chrom, sep="", coll="")
       x = x[which(!is.na(x$freq)),]
-      if(sum(x$freq<=1)==nrow(x)) x$freq=x$freq*100
+      # if(sum(x$freq<=1)==nrow(x)) x$freq=x$freq*100
+      x$id = paste0(x$chrom, ".", x$position,".", x$ref, '.', x$varallele)
       x$assignedCNV=NA
-      x$CN = 2
-      x$CN_raw = 2
-
+      x$CN_major  = 1
+      x$CN_minor  = 1
+      x$CN_raw    = 2
+      x$CN_normal = 2
     } else {
       stop("read.mutation.file: missing fields in mutation file ")
     }
@@ -94,21 +75,21 @@ read.mutation.file=function(filename){
   return(x)
 }
 
-# This function determine whether a mutation is a SNV or an InDel
-set.mutation.type = function(m){
-  m$alt.type = "InDel"
-  m$alt.type[which(nchar(m$varallele)==1 & nchar(m$ref)==1 & m$ref%in%c("A","C","G","T") & m$varallele%in%c("A","C","G","T"))] = "SNV"
-  return(m)
-}
-
 # This function read the cnvs of each sample
 # Tab-separeted file
 # columns: sample, chr, start , end, cnv type, CN, CN raw
 read.cnv.file=function(filename){
   if(!is.null(filename)){
     x = read.table(filename, h=F, sep='\t')
-    if(ncol(x)==7){
-      colnames(x) =c('sample','chrom','start','end','assignedCNV', 'CN', 'CN_raw')
+    if(ncol(x)==8){
+      colnames(x) =c('sample','chrom','start','end','assignedCNV', 'CN_major', 'CN_minor',  'CN_raw')
+      x$CN_normal = 2
+      x$type="CNV"
+      x$alt.type=x$assignedCNV
+      x$id = with(x, paste(chrom,".",start,".",end, sep = "", coll = ""))
+      return(x)
+    }else if(ncol(x)==9){
+      colnames(x) =c('sample','chrom','start','end','assignedCNV', 'CN_major', 'CN_minor',  'CN_raw', 'CN_normal')
       x$type="CNV"
       x$alt.type=x$assignedCNV
       x$id = with(x, paste(chrom,".",start,".",end, sep = "", coll = ""))
@@ -119,6 +100,13 @@ read.cnv.file=function(filename){
   } else {
     stop("read.CNV.file: CNV file not found")
   }
+}
+
+# This function determine whether a mutation is a SNV or an InDel
+set.mutation.type = function(m){
+  m$alt.type = "InDel"
+  m$alt.type[which(nchar(m$varallele)==1 & nchar(m$ref)==1 & m$ref%in%c("A","C","G","T") & m$varallele%in%c("A","C","G","T"))] = "SNV"
+  return(m)
 }
 
 # This function exclude samples without the associated SNP file from the CNV analysis
@@ -161,21 +149,59 @@ read.SNP.file=function(filename){
   }
 }
 
-# Tumour content correction =======
+# This function plot assign CNV status to those mutations falling in a CNV region
+get.CNV.status = function(m, c=NULL, chr=chr_levels){
+  require(GenomicRanges)
+  if(!is.null(c) & !is.null(m)){
+    im  = with(m, GRanges(chrom, IRanges(position,position) )); seqlevels(im, force=T)=chr
+    ic  = with(c, GRanges(chrom, IRanges(start,end) )); seqlevels(ic, force=T)=chr
+    ov  = findOverlaps(im,ic)
+    if(length(ov)>0){
+      m$assignedCNV[queryHits(ov)] = c$assignedCNV[subjectHits(ov)]
+      m$CN_major[queryHits(ov)]    = c$CN_major[subjectHits(ov)]
+      m$CN_minor[queryHits(ov)]    = c$CN_minor[subjectHits(ov)]
+      m$CN_raw[queryHits(ov)]      = c$CN_raw[subjectHits(ov)]
+      m$CN_normal[queryHits(ov)]      = c$CN_normal[subjectHits(ov)]
 
-# This function corrects for the tumour content of the sample
-# get.cor.tumor.content = function(x,y){
-#   x$freq.tc = round(x$freq/y$tc)
-#   if(sum(x$freq.tc>100)>0) x$freq.tc[ which(x$freq.tc>100) ] = 100
-#   return(x)
-# }
+    }
+    #     else{
+    #       warning("No mutations in CNV regions")
+    #     }
+  }
+  return(m)
+}
 
+# This function  assign genes to CNV regions
+get.genes.in.CNV.regions = function(c, annotation_filename = "GeneLists/Agilent_genes.tsv"){
+  require(GenomicRanges)
+  if(!is.null(c)){
+    ag = read.delim(annotation_filename,stringsAsFactors=F, h=F)
+    if(nrow(ag)>0){
+      ig = with(ag,GRanges(V1,IRanges(V2,V3) ) )
+      ic  = with(c, GRanges(chrom, IRanges(start,end) ))
+      ov  = findOverlaps(ig,ic)
+      c$gname=NA
+      if(length(subjectHits(ov))>0) c$gname[subjectHits(ov)] = ag$V4[queryHits(ov)]
+      # c = as.data.frame( cbind('gname'=ag$V4[queryHits(ov)], c[subjectHits(ov),]), stringsAsFactors=F )
+    }else{
+      warning("NO gene annotations provided. Excluding CNVs from the analysis")
+      c = NULL
+    }
+  }
+  return(c)
+}
+
+
+# CORRECTED FREQUENCY functions  =================================================================================
+
+# SNVS *********************************************
 get.tc.correction.somatic = function( obs, tc, CNt, CNn=2){
   return( min(
 
     obs * ( 1 + (  ( CNn*(1-tc) )/( CNt * tc) ) )  ,
 
-    100))
+    1))
+  # 100))
 }
 
 get.cor.tumor.content = function(x,y){
@@ -191,244 +217,145 @@ get.cor.tumor.content = function(x,y){
   return(x)
 }
 
-
-# Clonality assessment =======
-
-# This function prepare the mutation dataset for the clonal assessment
-prepare.mutation.dataset = function(x){
-  x$id=with(x,paste(chrom,".",position,".",ref,".",varallele,sep="",coll=""))  # mm = min(x$freq.tc)
-  y  = subset(x,freq.tc<=50)
-  x  = z = subset(x,freq.tc>50)
-  if(nrow(x)>0){
-    x$freq.tc = x$freq.tc - 50    # x$cov.tc = round( x$freq.tc * x$cov.tc,0)
-    x$position = x$position+1
-    z$freq.tc = 50    # z$cov.tc = round( z$freq.tc * z$cov.tc,0)
-    tmp = rbind(y,x,z)
-    tmp = subset(tmp,freq.tc>=1 & freq.tc<=50)
-  }else{
-    tmp=y
-  }
-  tmp
+get.CNV.proportion = function(CN_t, CN_a, CN_n  = 2 ){
+  CN_prop = ( CN_t - CN_n ) / ( CN_a - CN_n )
+  is_na = which(is.na(CN_prop))
+  if(length(is_na)>0) CN_prop[is_na]=0
+  return( CN_prop )
 }
 
-# This function prepare the mutation dataset for the clonal assessment in case of male samples
-prepare.mutation.dataset.male=function(x){
-  tmp = tmp2 = NULL
-  tmp = subset(x, !chrom%in%c("chrX","chrY") )
-  if(nrow(tmp)>0)  tmp = prepare.mutation.dataset(tmp)
-  tmp2    = subset(x, chrom%in%c("chrX","chrY"))
-  if(nrow(tmp2)>0){
-    tmp2$id = with(tmp2,paste0(chrom,".",position,".",ref,".",varallele))
-    tmp2$freq.tc = tmp2$freq.tc/2
-    if(!is.null(tmp)){
-      tmp = rbind(tmp,tmp2)
-    }else{
-      tmp = tmp2
-    }
-  }
-  tmp
-}
+get.CNV.clonality.for.SNVs=function(x,y){
+  tc = y$tc
+  #get total absolute number of alleles in copy number aberrant cells
+  x$CN_a = with(x, CN_major + CN_minor )
+  #get the average copy in tumor cells corrected for tumor content
+  x$CN_t = with(x, (CN_raw - (CN_normal * ( 1-tc )) ) / tc )
 
+  #calculate the clonality of cells with CNVs (CNV_prop)
+  x$CNV_prop = get.CNV.proportion(x$CN_t, x$CN_a, x$CN_normal)
 
+  #get a list of possible n-values that will be used to determine clonality in subclonal populations
+  for(i in 1:nrow(x)) x$n_vals[i] = paste(  unique(c(0,1,x$CN_minor[i], x$CN_major[i], (x$CN_a[i] -1) ) ), collapse = ",")
 
-# This function calculate the clonality
-get.clonality = function(x,y){
-  if(!is.null(x)){
-    clonality = x$freq.tc*2
-    if(!y$man){
-      clonality[which(x$chrom=="chrX")] =  x$freq.tc[which(x$chrom=="chrX")]
-    }
-    x$cell = clonality
-  }
   return(x)
 }
 
-# Auxialiary functions
-up = function(x) {
-  x = x[ which(x>50) ]
-  return(median(x,na.rm=T))
+
+# CLOANLITY functions  =================================================================================
+
+# SNVS *********************************************
+
+#This function calculates clonality for SNVs in subclonal copy number regions
+get.clonality.subclonal.CNV = function(freq.tc, CNV_prop, CN_t, n_vals, CN_h = 2){
+
+  n_values = as.integer( unlist(strsplit(n_vals, ",") ) )
+
+  clonal_vals = F2 = NULL;
+
+
+  for (n in n_values){
+    # browser()
+    f_2 = ( ( CN_t * freq.tc ) - ( n * CNV_prop ) )/( CN_h * (1 - CNV_prop) );
+
+    F2 = c(F2, f_2)
+
+    m = ifelse(n==0, 0, 1)
+
+    clonal_vals = c(clonal_vals,
+
+                    ( m* CNV_prop ) + (  f_2 * CN_h * (1 - CNV_prop)  )
+    )
+
+    # if n = 0, it means there are no SNV hits in CNV aberrant cells,
+    # and therefore clonality is equal to y*f_2*2
+    # if (f_2 <=1 & f_2 >0){
+    #   if (clonality<=1 & clonality >0){
+    #     clonal_vals = c(clonal_vals, clonality)
+    #   }
+    #
+    # }else{
+    #   # clonal_vals = c(clonal_vals, 1)
+    # }
+
+  }
+
+  cat("n\t",n_values, "\nF_2\t", F2)
+  cat("\nclonalities\t", clonal_vals,'\n')
+
+  clonality = mean(unique(clonal_vals))
+  cat("\nclonality\t",clonality,"\n")
+  return(clonality)
 }
 
-dw = function(x) {
-  x = x[ which(x<50) ]
-  return(median(x,na.rm=T))
-}
+# I leave this function for you Nikita, please modify the one above
+NIKITA.get.clonality.subclonal.CNV = function(freq.tc, CNV_prop, CN_t, n_vals, CN_h = 2){
+  n_values = as.integer( unlist(strsplit(n_vals, ",") ) )
+  clonal_vals = NULL;
 
-# This function assign the SNP frequncies to CNVs
-get.hetero.SNPs.freq.in.CNV.regions = function(c,s){
-  if(!is.null(c) & !is.null(s)){
-    snp = read.SNP.file(s$snp_filename)
-    if(nrow(c)>0 & nrow(snp)>0){
-      ig = with(snp, GRanges(chrom,IRanges(position,position) ) )
-      ic = with(c, GRanges(chrom, IRanges(start,end) ))
-      ov = NULL
-      ov = findOverlaps(ig,ic)
-      if(length(ov)>0 & subjectLength(ov)>0){
-        tmp = as.data.frame( cbind( c[subjectHits(ov),c("id",'assignedCNV','CN','CN_raw')], freq = snp[queryHits(ov),c('freq.T')]), stringsAsFactors=F )
-        tmp[,'freq'] = as.numeric(tmp[,'freq'])
-        res = ddply(tmp, .(id), summarise, freq.T.up = up( freq ), freq.T.dw = dw( freq ))
-        c = cbind(c, res[match(c$id, res$id),c('freq.T.up','freq.T.dw')])
-        ix = which(is.na(c$freq.T.up) & is.na(c$freq.T.dw))
-        if(length(ix)>0){
-          if(length(ix)!=nrow(c)){
-            c=c[-ix,]
-          } else{
-            warning("NO heterozygous SNPs in the regions")
-            c=NULL
-          }
-        }
-      }else{
-        warning("NO heterozygous SNPs in CNV regions. Excluding CNVs from the analysis")
-        c = NULL
+  for (n in n_values){
+
+    f_2 = ( (CN_t * freq.tc) - (n*CNV_prop) )/(CN_h * (1 - CNV_prop) )
+
+    if (f_2 <=1 & f_2 >0) # if n = 0, it means there are no SNV hits in CNV aberrant cells,
+      # and therefore clonality is equal to y*f_2*2
+    {
+      if (n==0) m = 0
+      if (n>0) m = 1
+      clonality = ( m*CNV_prop ) + ( f_2 * CN_h * (1 - CNV_prop) )
+
+      if (clonality<=1 & clonality >0){
+        clonal_vals = c(clonal_vals, clonality)
       }
+    }
+
+
+  }
+  clonality = mean(unique(clonal_vals))
+  return(clonality)
+}
+
+
+#reads information from dataframe y and calculates clonality
+#y dataframe with CNV clonality information and CN information for each SNV
+#columns: id, freq.tc, gname, alt.type, tc, CN_t, CNV_prop, n_vals, actual clonality
+get.SNV.clonality = function(x){
+  for(i in 1:nrow(x))
+    if( (x$CNV_prop[i] <=0.9 & x$CNV_prop[i] >0.1)){
+      x$cell[i] =  get.clonality.subclonal.CNV(   x$freq.tc[i]
+                                                  , x$CNV_prop[i]
+                                                  , x$CN_t[i]
+                                                  , x$n_vals[i]
+                                                  , x$CN_normal[i] )
     }else{
-      warning("cnv_list or snp_list empty")
+      # for all SNVs where copy number is not subclonal, clonality = freq.tc*CN_t
+      x$cell[i] = min(x$freq.tc[i]*x$CN_t[i], 1)
     }
-  }
-  return(c)
-}
-
-
-# correzione per il tc (germinali)
-
-get.tc.correction.germline = function( obs, tc, CNt, CNn=2, Fg = 50){
-
-  if(obs<60 & obs>40){
-    return(50)
-  }else{
-
-    return( min(
-
-      ( obs * ( 1 + (  ( CNn*(1-tc) )/( CNt * tc) ) ) ) - (Fg * (  ( CNn*(1-tc) )/( CNt * tc) ) ) ,
-
-      100))
-  }
-}
-
-#================================================================
-# chiamata di pyclone per capire se sono clonali o sottoclonali
-#================================================================
-
-# This function assign the clonality of CNVs
-
-get.cor.tumor.content.CNV = function(x,y){
-  if(is.null(x)) return(NULL)
-  x$freq.tc = NA
-  x$freq = NA
-  w = rbind()
-  # z = subset(x, assignedCNV=='Gain')
-  z = x
-  ix = which(is.na(z$freq.T.up))
-  if(length(ix)>0){
-    z$freq.T.up[ix] = 100 -  z$freq.T.dw[ ix ]
-    ix = which(is.na(z$freq.T.up))
-    if(length(ix)>0) z=z[-ix,]
-    if (is.null(z)) return(x)
-  }
-
-  x$freq = z$freq.T.up
-
-  if(nrow(z)>0){
-
-    for(i in 1:nrow(z)) z$freq.tc[i] = get.tc.correction.germline( z$freq.T.up[i], y$tc, z$CN_raw[i])
-
-    if(y$man){
-      idX = which(z$chrom=="chrX")
-      idY = which(z$chrom=="chrY")
-      if(length(idX)>0) for(i in idX) z$freq.tc[i] = get.tc.correction.germline( z$freq.T.up[i], y$tc, z$CN_raw[i], CNn=1)
-      if(length(idY)>0) for(i in idY) z$freq.tc[i] = get.tc.correction.germline( z$freq.T.up[i], y$tc, z$CN_raw[i], CNn=1)
-    }
-    w = rbind(w,z)
-  }
-   return(w)
-}
-
-
-# This function assign the clonality of CNVs
-get.clonality.CNV = function(x, y ){
-  if(!is.null(x)){
-    if(nrow(x)>0){
-
-      x$cell = ifelse( x$freq.tc<60 & x$freq.tc>40 ,
-                       100 ,
-                       (round(x$freq.tc, 0) - 50 )*2
-      )
-
-      ix = which(x$cell>100)
-      if(length(ix)>0) x$cell[ix] = 100
-
-
-      ix = which(is.na(x$cell))
-      if(length(ix)>0){
-        if(length(ix)!=nrow(x)){
-          x=x[-ix,]
-        } else{
-          warning("NO heterozygous SNPs in the regions")
-          x=NULL
-        }
-      }
-    }else{
-      warning("Impossible assessing CNV clonality")
-      # x = NULL
-    }
-  }
   return(x)
 }
 
-# This function plot assign CNV status to those mutations falling in a CNV region
-get.CNV.status = function(m, c=NULL, chr=chr_levels){
-  if(!is.null(c) & !is.null(m)){
-    im  = with(m, GRanges(chrom, IRanges(position,position) )); seqlevels(im, force=T)=chr
-    ic  = with(c, GRanges(chrom, IRanges(start,end) )); seqlevels(ic, force=T)=chr
-    ov  = findOverlaps(im,ic)
-    if(length(ov)>0){
-      m$assignedCNV[queryHits(ov)] = c$assignedCNV[subjectHits(ov)]
-      m$CN[queryHits(ov)] = c$CN[subjectHits(ov)]
-      m$CN_raw[queryHits(ov)] = c$CN_raw[subjectHits(ov)]
-    }
-    #     else{
-    #       warning("No mutations in CNV regions")
-    #     }
-  }
-  return(m)
+# CNVS *********************************************
+
+# This function reads integrated information for CNV regions and outputs dataframe with CNV clonality
+get.CNV.clonality=function(x,y){
+
+  tc = y$tc
+  #get total absolute number of alleles in copy number aberrant cells
+  x$CN_a = with(x, CN_major + CN_minor )
+  #get the average copy in tumor cells corrected for tumor content
+  x$CN_t = with(x, (CN_raw - (CN_normal * ( 1-tc )) ) / tc )
+
+  #calculate the clonality of cells with CNVs (CNV_prop)
+  x$cell = get.CNV.proportion(x$CN_t, x$CN_a, x$CN_normal)
+
+  return(x)
 }
 
-# This function plot assign genes to CNV regions
-get.genes.in.CNV.regions = function(c, annotation_filename = "GeneLists/Agilent_genes.tsv"){
-  if(!is.null(c)){
-    ag = read.delim(annotation_filename,stringsAsFactors=F, h=F)
-    if(nrow(ag)>0){
-      ig = with(ag,GRanges(V1,IRanges(V2,V3) ) )
-      ic  = with(c, GRanges(chrom, IRanges(start,end) ))
-      ov  = findOverlaps(ig,ic)
-      c = as.data.frame( cbind('gname'=ag$V4[queryHits(ov)], c[subjectHits(ov),]), stringsAsFactors=F )
-    }else{
-      warning("NO gene annotations provided. Excluding CNVs from the analysis")
-      c = NULL
-    }
-  }
-  return(c)
-}
 
-get.CNV.without.mutations = function(c, m, chr=chr_levels){
-  if(!is.null(c)){
-    c$with_mutations=F
-    if(!is.null(m)){
-      im  = with(m, GRanges(chrom, IRanges(position,position) )); seqlevels(im, force=T)=chr
-      ic  = with(c, GRanges(chrom, IRanges(start,end) )); seqlevels(ic, force=T)=chr
-      ov  = findOverlaps(ic,im)
-      if(length(ov)>0){
-        c$with_mutations[queryHits(ov)] = T
-      }
-    }
-  }
-  return(c)
-}
-
+# Output ===================================================================================================
 
 # This function generate the dataset for the clonality.plot
 prepare.dataset = function(m=NULL, c=NULL){
-  mcol = c('sample','type','cell','alt.type','gname','id','assignedCNV','CN','CN_raw','freq','freq.tc')
+  mcol = c('sample','alt.type','cell','type','gname','id','assignedCNV','CN_major', 'CN_minor', 'CN_raw', 'CN_normal','CN_raw','CN_a','CN_t') #,'freq','freq.tc'
   if(!is.null(m) & is.null(c)){
     return(m[,mcol])
   }else if(is.null(m)  & !is.null(c)){
@@ -439,7 +366,7 @@ prepare.dataset = function(m=NULL, c=NULL){
 }
 
 prepare.dataset.1set = function(c){
-  mcol = c('sample','type','cell','alt.type','gname','id','assignedCNV','CN','CN_raw','freq','freq.tc')
+  mcol = c('sample','alt.type','cell','type','gname','id','assignedCNV','CN_major', 'CN_minor', 'CN_raw', 'CN_normal','CN_raw','CN_a','CN_t') #,'freq','freq.tc'
   if(!is.null(c)){
     return( c[,mcol] )
   } else {
@@ -459,9 +386,6 @@ set.gene.category = function(m, gl=NULL){
   return(m)
 }
 
-
-# Output =======
-
 # This function create the outout folder
 create.output.folder = function (s, odir, title=NULL) {
   if(!dir.exists(odir)) dir.create(odir)
@@ -477,11 +401,11 @@ create.output.folder = function (s, odir, title=NULL) {
   dir.create( analisys )
   for(i in s$sample ) dir.create( paste0( analisys, "/", i))
   return(analisys)
-  }
+}
 
 
 #this function get the clone composition
-get.clone.composition = function(x, upper=80, lower=35){
+get.clone.composition = function(x, upper=.80, lower=.35){
   x$upper=upper
   x$lower=lower
   y = z = NULL
@@ -524,21 +448,6 @@ get.clone.composition = function(x, upper=80, lower=35){
   return(y)
 }
 
-#this function get the clone composition
-get.clone.composition.OLD = function(x, upper=80, lower=35){
-  x$upper=upper
-  x$lower=lower
-  y = NULL
-  if(!is.null(x)){
-    y = ddply(x, .(sample), summarise,
-              monoclonal = sum(cell>=unique(upper))/length(cell),
-              biclonal   = sum(cell<unique(upper) & cell>=unique(lower))/length(cell),
-              polyclonal = sum(cell<unique(lower))/length(cell))
-    code = c("M","B","P"); names(code)=c('monoclonal','biclonal','polyclonal')
-    y$composition = code[names(which.max(y[,2:4]))]
-  }
-  return(y)
-}
 
 #this function plot a bar chart representing the clone composition
 clone.composition.plot= function(x, cl=color_clone_composition){
@@ -664,7 +573,7 @@ bar.composition = function( x , cl = color_clone_composition){
 
 # These functions generate axes
 base_breaks_x = function(x, br, la, reverse=T){
-  d <- data.frame(y=-Inf, yend=-Inf, x=0, xend=100)
+  d <- data.frame(y=-Inf, yend=-Inf, x=0, xend=1)
   if(reverse){
     return(list(geom_segment(data=d, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE), scale_x_reverse(breaks=br, labels=la)))
   }else{
@@ -691,92 +600,59 @@ base_breaks_y2 = function(m, br, la ){
   list(geom_segment(data=d, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE), scale_y_continuous(breaks=br, labels=la))
 }
 
-word_cloud = function (pdr) {
-  # browser()
-  if(nrow(pdr)>1){
-    pdf(file.path(tempdir(), "Rplots.pdf"))
-    plot(y = pdr$y, x=pdr$cell, type="n")
-    pd             = as.data.frame(wordlayout(x=pdr$cell, y=pdr$y, words = pdr$code, xlim=c(0,Inf), ylim=c(0,Inf), cex=1.5),  stringsAsFactors=F, check.names =F)
-    dev.off()
-    tmp            = strsplit(rownames(pd), "\\:")
-    pd$gname       = sapply(tmp, function(x) x[3] )
-    pd$Alteration_type    = sapply(tmp, function(x) x[2] )
-    rm(tmp)
-    for (i in 1:nrow(pd)) {
-      xl <- pd[i, 1]
-      yl <- pd[i, 2]
-      w  <- pd[i, 3]
-      h  <- pd[i, 4]
-      if (pdr$cell[i] < xl || pdr$cell[i] > xl + w || pdr$y[i] < yl || pdr$y[i] > yl + h) {
-        pdr$nx[i] <- xl + 0.45 * w
-        pdr$ny[i] <- yl + .5 * h
-      }
-    }
-  }
-  return(pdr)
-}
-
-plot.drivers = function (drvrs, gg_builder, a ) {
-  # browser()
-  drvrs=ddply(drvrs, .(cell,Alteration_type, original), summarise, gname=paste(gname, collapse=","))
-
-  plvs=c("SNV","InDel","Gain","Loss"); names(plvs)=c("SNV","InDel","Gain","Loss")
-  plvs = plvs[which(names(plvs)%in%a)]
-
-  p.drvrs=rbind()
-  for(j in unique((drvrs$Alteration_type))){
-    dd1 = subset(gg_builder,group == which(plvs == j) )
-    y1  =  subset(drvrs,(Alteration_type)==j )
-    yy1=xxx1=c()
-    for (i in y1$cell){
-      xxx1 = c(xxx1, dd1$x[which(abs(dd1$x-i)==min(abs(dd1$x-i)))][1])
-      yy1  = c(yy1,  dd1$y[which(abs(dd1$x-i)==min(abs(dd1$x-i)))][1])
-    }
-    if(!is.null(xxx1)){
-      y1$cell=xxx1
-      y1$y=yy1
-      p.drvrs=rbind(p.drvrs,y1)
-    }
-  }
-  p.drvrs      = as.data.frame(p.drvrs, stringsAsFactors=F)
-
-  p.drvrs$code = with( p.drvrs, paste(1:nrow(p.drvrs),":", Alteration_type, ":",gname, sep="",coll=""))
-  p.drvrs$nx=0
-  p.drvrs$ny=0
-
-  p.drvrs = word_cloud(p.drvrs)
-  return(p.drvrs)
-}
-
 check.alterations.per.category = function( y ){
+  # duplicates
   iy = paste(y$cell,'.',y$id, sep="", coll="")
   iy = which(!duplicated(iy))
   if(length(iy)>0){
     y = y[iy, ]
   }
-  cat        = rep(0,4); names(cat) = c("SNV","InDel","Gain","Loss");
-  alternative = c("InDel","SNV","Loss","Gain"); names(alternative) = c("SNV","InDel","Gain","Loss");
-  cat[ names(table(y$Alteration_type)) ] = table(y$Alteration_type)
-  y$original_category = y$Alteration_type
-  id = names(which(cat<=5 & cat>0))
-  if( sum(id%in%c("SNV","InDel"))==2){
-    y$Alteration_type[ which(y$original_category %in%c("SNV","InDel"))] = 'SNV'
-  } else if (sum(id%in%c("Gain","Loss"))==2){
-    y$Alteration_type[ which(y$original_category %in%c("Gain","Loss"))] = 'Gain'
-  } else {
-    for(i in id){
-      y$Alteration_type[ which(y$original_category == i)] =  alternative[ i  ]
-    }
-  }
-  y$original = c("No","Yes")[as.numeric( y$Alteration_type==y$original_category )+1 ]
+
+  is_na = which(is.na(y$gname))
+  if(length(is_na)>0) y$gname[is_na] = y$id[is_na]
+
+
+  # cat        = rep(0,4); names(cat) = c("SNV","InDel","Gain","Loss");
+  # alternative = c("InDel","SNV","Loss","Gain"); names(alternative) = c("SNV","InDel","Gain","Loss");
+  #
+  # cat[ names(table(y$Alteration_type)) ] = table(y$Alteration_type)
+  #
+  # y$original_category = y$Alteration_type
+  #
+  # id = names(which(cat<=5 & cat>0))
+  #
+  # if( sum(id%in%c("SNV","InDel"))==2){
+  #   y$Alteration_type[ which(y$original_category %in%c("SNV","InDel"))] = 'SNV'
+  # } else if (sum(id%in%c("Gain","Loss"))==2){
+  #   y$Alteration_type[ which(y$original_category %in%c("Gain","Loss"))] = 'Gain'
+  # } else {
+  #   for(i in id){
+  #     y$Alteration_type[ which(y$original_category == i)] =  alternative[ i  ]
+  #   }
+  # }
+  # y$original = c("No","Yes")[as.numeric( y$Alteration_type==y$original_category )+1 ]
   return(y)
 }
 
 prepare.dataset.to.density.plot = function(y){
   tmp = subset(y, Alteration_type%in%c("Gain",'Loss'))
-  cx = ddply(tmp, .(id,Alteration_type,cell), summarise, gname=paste(gname,collapse=",") )
+
+  if(nrow(tmp)>0){
+    cx = ddply(tmp, .(id,Alteration_type,cell), summarise, gname=paste(gname,collapse=",") )
+  }
+
+  mut = subset(y, Alteration_type%in%c("SNV","InDel"))
+
   dd = NULL
-  dd = as.data.frame( rbind(subset(y, Alteration_type%in%c("SNV","InDel"))[,c('Alteration_type','cell')], cx[,c('Alteration_type','cell')]) , check.names=F)
+
+  if(nrow(mut)>0 & nrow(tmp)>0){
+    dd = as.data.frame( rbind(mut[,c('Alteration_type','cell')], cx[,c('Alteration_type','cell')]) , check.names=F)
+  }else if(is.null(tmp)){
+    dd = as.data.frame( mut[,c('Alteration_type','cell')] , check.names=F)
+  }else if(is.null(mut)){
+    dd = as.data.frame( cx[,c('Alteration_type','cell')] , check.names=F)
+  }
+
   dd$Alteration_type=factor(dd$Alteration_type, levels=  c("SNV","InDel","Gain","Loss"))
 
   m = with(dd, table(Alteration_type, cell))
@@ -799,17 +675,12 @@ prepare.dataset.to.density.plot = function(y){
 # This function plot derives and plots the density distributions of clonality for SNVs, InDels, amplifications, and deletions separately
 density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
   if(!is.null(x)){
-    colnames(x)[4]='Alteration_type'
+    colnames(x)[2]='Alteration_type'
     px = NULL
 
     # SELECT ONLY MUTATIONS THAT DO NOT UNDERGO CNVS
 
-    # if(sum(x$type=="Mutation")>0){
-    # px = subset(x, (type=="Mutation" & is.na(assignedCNV)) | type=="CNV")[,c('cell','Alteration_type','gname','category','id')]
     px = subset(x, type=="Mutation" | type=="CNV")[,c('cell','Alteration_type','gname','category','id')]
-    # }else{
-    # px = x[,c('cell','Alteration_type','gname','category','id')]
-    # }
 
     if(nrow(px)<2){
       cat("density.plot: LESS THEN 2 ALTERATIONS TO DRAW THE PLOT")
@@ -825,8 +696,8 @@ density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
     # Density Plot
     p =
       ggplot(dd, aes(x=cell,fill=Alteration_type)) + geom_density(alpha=.5, adjust=4) + aes(y = ..count..) +
-      geom_vline(xintercept=80, linetype="dashed", color="grey")+
-      geom_vline(xintercept=35, linetype="dashed", color="grey")+
+      geom_vline(xintercept=.80, linetype="dashed", color="grey")+
+      geom_vline(xintercept=.35, linetype="dashed", color="grey")+
       scale_fill_manual(values=fill_cols,
                         guide = guide_legend(title = NULL)
       )
@@ -845,14 +716,42 @@ density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
     drivers=subset(px, !is.na(category) )
 
     if(nrow(drivers)>0){
+
       p.drivers = plot.drivers(drivers, gg, gga )
 
-      ishape = c(19,17); names(ishape)=c("Yes","No")
+      drvrs=ddply(drivers, .(cell,Alteration_type), summarise, gname=paste(gname, collapse=","))
+
+      plvs=c("SNV","InDel","Gain","Loss"); names(plvs)=c("SNV","InDel","Gain","Loss")
+      plvs = plvs[which(names(plvs)%in%gga)]
+
+      p.drvrs=rbind()
+      for(j in unique((drvrs$Alteration_type))){
+        dd1 = subset(gg,group == which(plvs == j) )
+        y1  =  subset(drvrs,(Alteration_type)==j )
+        yy1=xxx1=c()
+        for (i in y1$cell){
+          xxx1 = c(xxx1, dd1$x[which(abs(dd1$x-i)==min(abs(dd1$x-i)))][1])
+          yy1  = c(yy1,  dd1$y[which(abs(dd1$x-i)==min(abs(dd1$x-i)))][1])
+        }
+        if(!is.null(xxx1)){
+          y1$cell=xxx1
+          y1$y=yy1
+          p.drvrs=rbind(p.drvrs,y1)
+        }
+      }
+
+      p.drvrs      = as.data.frame(p.drvrs, stringsAsFactors=F)
+
+      p +
+        geom_point(data=p.drvrs, aes(x = cell, y=y), colour="black", show.legend = F)+
+
+
+        ishape = c(19,17); names(ishape)=c("Yes","No")
 
       if(names==T){
-        p= p + geom_point(data=p.drivers, aes(x = cell, y=y, shape=original), colour="black", show.legend = F)+
-          geom_text(data=p.drivers, aes(x = cell,y=y,label=gname, family=""),  size=rel(3.5), hjust=rel(.75), vjust=rel(-.25), show.legend = F)
-        scale_shape_manual(values=ishape[levels(p.drivers$original)], guide = 'none')
+        p= p + geom_point(data=p.drvrs, aes(x = cell, y=y, shape=original), colour="black", show.legend = F)+
+          geom_text_repel(data=p.drvrs, aes(x=cell, y=y, label = gname))#        (data=p.drivers, aes(x = cell,y=y,label=gname, family=""),  size=rel(3.5), hjust=rel(.75), vjust=rel(-.25), show.legend = F)
+        # scale_shape_manual(values=ishape[levels(p.drivers$original)], guide = 'none')
         if(sum(p.drivers$nx>0)>0){
           p = p +   geom_segment(data=subset(p.drivers,nx>0), aes(x = cell,y=y,xend=nx,yend=ny))
         }
@@ -869,7 +768,7 @@ density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
                 axis.title.y     = element_text(size=rel(1)),
                 rect             = element_blank())+
       base_breaks_y(ymax, c(0,ymed,ymax), as.character(c(0,lmed,lmax)))+
-      base_breaks_x(gg$x, c(0,35,80,100), c("0","35","80","100")) +
+      base_breaks_x(gg$x, c(0,.35,.80,1), c("0","35","80","100")) +
       ylab('Expected Alterations')+xlab('Alteration clonality (%)')
     return(p)
   } else {
@@ -1006,7 +905,3 @@ global_report = function(analysis, composition ){
     dev.off()
   }
 }
-
-# cat("Done\n")
-
-

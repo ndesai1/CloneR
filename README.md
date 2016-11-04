@@ -27,15 +27,16 @@ library(DT)
 runGitHub("CloneR","matteocereda")
 ```
 
+## GUI
+CloneR can be run on an R shell following the commands reported in the script GUI/CloneR.R
+
 ## Input files
 
 - Sample file (tab separated). Columns: sample, gender (man=T, female=F), tumor content (i.e. 0.7)
 
 - Mutation file (tab separated). Columns: sample, chr, position , reference, variant , allele frequency, gene symbol, mutation type (i.e. SNV, InDel)
 
-- CNV file (tab separated). Columns: sample, chr, start , end, cnv type, CN, CN raw
-
-- heterogyzous germline SNPs (tab separated, one file per sample). columns: id, chrom, position, allele freq in normal sample, allele freq in tumor
+- CNV file (tab separated). Columns: sample, chr, start , end, cnv type, CN_major, CN_minor, CN raw
 
 
 

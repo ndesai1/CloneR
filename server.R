@@ -6,47 +6,30 @@ options(shiny.maxRequestSize = 30*1024^2)
 options(scipen=3)
 
 
-cloneR= function(sample_filename, mutation_filename, cnv_filename, snp_folder, gene_list_filename, ann_filename, outdir){
-  sample_list = gene_list = mutations = cnvs = snps = samples = sample_list = mutation_list = cnv_list = snp_list = genes_of_interest = NULL
+cloneR= function(  sample_filename
+                 , mutation_filename
+                 , cnv_filename
+                 , gene_list_filename
+                 , ann_filename
+                 , outdir){
+  sample_list = gene_list = mutations = cnvs = snps = samples = sample_list = mutation_list = cnv_list = genes_of_interest = NULL
 
-    # ==== Load Configuration File =====
-    samples = read.config.file( sample_filename )
-    sample_list = dlply( samples, .(sample) )
+  # ==== Load Configuration File =====
+  samples = read.config.file( sample_filename )
+  sample_list = dlply( samples, .(sample) )
 
   # ==== Genes of interest File =====
-    gene_list = read.gene.file( gene_list_filename )
+  gene_list = read.gene.file( gene_list_filename )
 
   # ==== Load mutations =====
-    if(!is.null(mutation_filename)) mutations = read.mutation.file(mutation_filename)
+  if(!is.null(mutation_filename)) mutations = read.mutation.file(mutation_filename)
 
   # ==== Load CNVs =====
-    if(!is.null(cnv_filename)) cnvs = read.cnv.file(cnv_filename)
-
-  # ==== Load heterozygous SNPs =====
-   if(!is.null(cnvs)){
-    snp_filnames = list.files(snp_folder,pattern=".snps.tsv")
-    if(length(snp_filnames)>0){
-      snp_filnames = paste0(snp_folder,"/", snp_filnames)
-      sample_list  = lapply(sample_list, function(x,s){
-        file = grep(x$sample, s, value=TRUE)
-        x$snp_filename = ifelse(length(file)>0, file, NA)
-        return(x)
-      }, s = snp_filnames)
-
-    }else{
-      warning("No heterozygous SNP files are provided, CNVs are exluded from the analysis")
-      cnvs=NULL
-    }
-    samples = do.call("rbind", sample_list)
-
-    cnvs = exclude.samples.without.SNPs( cnvs, samples)
-  }
+  if(!is.null(cnv_filename)) cnvs = read.cnv.file(cnv_filename)
 
   if(is.null(mutations) & is.null(cnvs)) stop("\nYou MUST provide Mutation file and/or CNV file")
-
   if(!is.null(mutations)) mutations = mutations[which(mutations[,1]%in%samples[,1]),]
   if(!is.null(cnvs)) cnvs = cnvs[which(cnvs[,1]%in%samples[,1]),]
-
   cat("Number of samples:\t",nrow(samples))
   cat("\nNumber of samples with mutation data:\t",length(unique(mutations$sample)))
   cat("\nNumber of samples with CNV data:\t",length(unique(cnvs$sample)))
@@ -77,30 +60,17 @@ cloneR= function(sample_filename, mutation_filename, cnv_filename, snp_folder, g
       mutation_list = mapply( get.CNV.status , mutation_list, cnv_list[ names(mutation_list)], SIMPLIFY = F)
     }
 
-    # Tumour content Correction
+
+    # Frequency Correction by TC and CN
     mutation_list = mapply( get.cor.tumor.content, mutation_list, sample_list[ names( mutation_list ) ], SIMPLIFY = F)
 
-    # preparing data for clonality assessement | splitting alleles
-    tmp = subset( samples, sample%in%names( mutation_list ) )
-    a = b = list()
-    if(sum(tmp$man)>0){
-      a = mutation_list[ subset(tmp, man)$sample ]
-      a = lapply(a, function(x) prepare.mutation.dataset.male(x) )
-    }
+    mutation_list = mapply( get.CNV.clonality.for.SNVs, mutation_list, sample_list[ names( mutation_list ) ], SIMPLIFY = F)
 
-    if(sum(!tmp$man)>0){
-      b = mutation_list[ subset(tmp, !man)$sample ]
-      b = lapply(b, function(x) prepare.mutation.dataset(x) )
-    }
+    mutation_list = lapply( mutation_list, get.SNV.clonality)
 
-    mutation_list        = c(a,b)
     mutation_list        = mutation_list[ names(sample_list) ]
     names(mutation_list) = names(sample_list)
 
-    # Assessment of clonality
-    mutation_list        = mapply( get.clonality, mutation_list, sample_list, SIMPLIFY = F)
-
-    rm(a,b, tmp)
     cat("Done\n")
   }
 
@@ -113,16 +83,9 @@ cloneR= function(sample_filename, mutation_filename, cnv_filename, snp_folder, g
   if(!is.null(cnvs)){
     cat("Assessing clonality of CNVs...\n")
 
-    # Assign allele frequency to CNVs
-
-    cnv_list = mapply_pb( get.hetero.SNPs.freq.in.CNV.regions, cnv_list, sample_list[ names( cnv_list ) ], SIMPLIFY = F)
-
-    # Assess Clonality
     cnv_list = cnv_list[ names(sample_list) ]
-    cnv_list = mapply( get.cor.tumor.content.CNV, cnv_list, sample_list, SIMPLIFY = F)
-    cnv_list = mapply( get.clonality.CNV, cnv_list, sample_list, SIMPLIFY = F)
-    cnv_list = mapply( get.CNV.without.mutations,  cnv_list, mutation_list, SIMPLIFY = F)
-    rm(snps, snp_list)
+    cnv_list = mapply( get.CNV.clonality, cnv_list, sample_list, SIMPLIFY = F)
+
     cnv_list_region = cnv_list
     cat("\nDone\n")
   }
@@ -244,20 +207,21 @@ cloneR= function(sample_filename, mutation_filename, cnv_filename, snp_folder, g
   composition$p_polyclonal =  round(composition$polyclonal,3)*100
 
 
-  ret = list(comp=composition, dataset=dataset[,c('sample', 'alt.type','gname','id','freq','freq.tc','CN',"CN_raw",'cell',"category")])
+  ret = list(comp=composition, dataset=dataset[,c('sample', 'alt.type','gname','id','cell','cell',"category")])
   ret$comp    = unrowname(ret$comp)
 
 
   ret$dataset         = unrowname(ret$dataset)
-  ret$dataset$CN_raw  = round(ret$dataset$CN_raw, 2)
-  ret$dataset$freq    = round(ret$dataset$freq,2)
-  ret$dataset$freq.tc = round(ret$dataset$freq.tc,2)
+  # ret$dataset$CN_raw  = round(ret$dataset$CN_raw, 2)
+  # ret$dataset$freq    = round(ret$dataset$freq,2)
+  # ret$dataset$freq.tc = round(ret$dataset$freq.tc,2)
   ret$dataset$cell    = round(ret$dataset$cell,2)
 
-  colnames(ret$dataset) = c('Sample','Alteration','HUGO symbol','id','Allele Frequency (AF)', 'estimated AF','Copy Number (CN)','CN_raw','Clonality','Gene category')
+  # colnames(ret$dataset) = c('Sample','Alteration','HUGO symbol','id','Allele Frequency (AF)', 'estimated AF','Copy Number (CN)','CN_raw','Clonality','Gene category')
+  colnames(ret$dataset) = c('Sample','Alteration','HUGO symbol','id','Clonality','Gene category')
 
 
-  return(ret)
+
 }
 
 
@@ -283,7 +247,7 @@ shinyServer(function(input, output) {
               sample_filename    = input$sample_file$datapath
               mutation_filename  = input$mutation_file$datapath
               cnv_filename       = input$cnv_file$datapath
-              snp_folder         = input$snp_folder
+              # snp_folder         = input$snp_folder
 
               gene_list_filename = ifelse(is.null(input$gene_coordinate_file), "GeneLists/Actionable_genes.tsv", input$gene_coordinate_file$datapath)
               ann_filename       = ifelse(is.null(input$list_gene_file), "GeneLists/Agilent_genes.tsv", input$list_gene_file$datapath)
@@ -294,7 +258,13 @@ shinyServer(function(input, output) {
 
               if(!is.null(outdir) & !is.null(sample_filename) & ( !is.null(mutation_filename) | (!is.null(cnv_filename) & is.null(snp_folder)) ) ){
 
-                cloneR(sample_filename, mutation_filename, cnv_filename, snp_folder, gene_list_filename, ann_filename, outdir)
+                cloneR(sample_filename
+                       , mutation_filename
+                       , cnv_filename
+                       # , snp_folder
+                       , gene_list_filename
+                       , ann_filename
+                       , outdir)
 
               }
 
