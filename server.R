@@ -279,14 +279,14 @@ shinyServer(function(input, output) {
         current$composition = results[["comp"]]
 
 
-        m = clone.composition.plot.overall.ply(current$composition)
-        print(m)
-        plot_ly(m, y=sample, x=percentage,  type='bar', orientation = "h", color=composition, colors=color_clone_composition) %>%
-        layout(p,barmode = 'stack',
-                   yaxis=list(title='', tickfont=list(family = "Arial, sans-serif")),
-                   xaxis=list(title='Alterations (%)', titlefont=list(family = "Arial, sans-serif"), tickfont=list(family = "Arial, sans-serif"))
-        )
-
+        # m = clone.composition.plot.overall.ply(current$composition)
+        # print(m)
+        # plot_ly(m, y=sample, x=percentage,  type='bar', orientation = "h", color=composition, colors=color_clone_composition) %>%
+        # layout(p,barmode = 'stack',
+        #            yaxis=list(title='', tickfont=list(family = "Arial, sans-serif")),
+        #            xaxis=list(title='Alterations (%)', titlefont=list(family = "Arial, sans-serif"), tickfont=list(family = "Arial, sans-serif"))
+        # )
+        #
 
 
       })
