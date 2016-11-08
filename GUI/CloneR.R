@@ -1,6 +1,6 @@
-sample_filename='../Example/test.sample.txt'
-mutation_filename='../Example/test.mutations.txt'
-cnv_filename='../Example/test.cnvs.txt'
+sample_filename='../Example/CloneR_Test.sample_simulations_7Nov.txt'
+mutation_filename='../Example/CloneR_Test.mutations_simulations_7Nov.txt'
+cnv_filename='../Example/CloneR_Test.cnvs_simulations_7Nov.txt'
 gene_list_filename='../GeneLists/Actionable_genes.tsv'
 outdir='~/tmp'
 
@@ -56,10 +56,10 @@ if(!is.null(mutations)){
 
 
   # Frequency Correction by TC and CN
-  mutation_list = mapply( get.cor.tumor.content, mutation_list, sample_list[ names( mutation_list ) ], SIMPLIFY = F)
-
   mutation_list = mapply( get.CNV.clonality.for.SNVs, mutation_list, sample_list[ names( mutation_list ) ], SIMPLIFY = F)
-
+  
+  mutation_list = mapply( get.cor.tumor.content, mutation_list, sample_list[ names( mutation_list ) ], SIMPLIFY = F)
+  
   mutation_list = lapply( mutation_list, get.SNV.clonality)
 
   mutation_list        = mutation_list[ names(sample_list) ]
