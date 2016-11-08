@@ -1,0 +1,1 @@
+Test_sample_1	TRUE	0.6Test_sample_2	TRUE	0.6Test_sample_3	TRUE	0.7Test_sample_4	TRUE	0.7Test_sample_5	TRUE	0.7Test_sample_6	TRUE	0.9Test_sample_7	TRUE	0.9Test_sample_8	TRUE	0.7Test_sample_9	TRUE	0.7Test_sample_10	TRUE	0.7Test_sample_11	TRUE	0.8Test_sample_12	TRUE	0.7Test_sample_13	TRUE	0.8
