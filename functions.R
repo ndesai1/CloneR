@@ -206,13 +206,13 @@ get.tc.correction.somatic = function( obs, tc, CNt, CNn=2){
 
 get.cor.tumor.content = function(x,y){
 
-  for(i in 1:nrow(x))  x$freq.tc[i] = get.tc.correction.somatic(x$freq[i], y$tc, x$CN_raw[i], 2 )
+  for(i in 1:nrow(x))  x$freq.tc[i] = get.tc.correction.somatic(x$freq[i], y$tc, x$CN_t[i], 2 )
 
   if(y$man){
     idX = which(x$chrom=="chrX")
     idY = which(x$chrom=="chrY")
-    if(length(idX)>0) for(i in idX) x$freq.tc[i] = get.tc.correction.somatic( x$freq[i], y$tc, x$CN_raw[i], CNn=1)
-    if(length(idY)>0) for(i in idY) x$freq.tc[i] = get.tc.correction.somatic( x$freq[i], y$tc, x$CN_raw[i], CNn=1)
+    if(length(idX)>0) for(i in idX) x$freq.tc[i] = get.tc.correction.somatic( x$freq[i], y$tc, x$CN_t[i], CNn=1)
+    if(length(idY)>0) for(i in idY) x$freq.tc[i] = get.tc.correction.somatic( x$freq[i], y$tc, x$CN_t[i], CNn=1)
   }
   return(x)
 }
@@ -249,42 +249,39 @@ get.CNV.clonality.for.SNVs=function(x,y){
 get.clonality.subclonal.CNV = function(freq.tc, CNV_prop, CN_t, n_vals, CN_h = 2){
 
   n_values = as.integer( unlist(strsplit(n_vals, ",") ) )
-
   clonal_vals = F2 = NULL;
-
-
+  n_vals = NULL;
+  y = 1 - CNV_prop;
+  
   for (n in n_values){
-    # browser()
-    f_2 = ( ( CN_t * freq.tc ) - ( n * CNV_prop ) )/( CN_h * (1 - CNV_prop) );
-
-    F2 = c(F2, f_2)
-
-    m = ifelse(n==0, 0, 1)
-
-    clonal_vals = c(clonal_vals,
-
-                    ( m* CNV_prop ) + (  f_2 * CN_h * (1 - CNV_prop)  )
-    )
-
-    # if n = 0, it means there are no SNV hits in CNV aberrant cells,
-    # and therefore clonality is equal to y*f_2*2
-    # if (f_2 <=1 & f_2 >0){
-    #   if (clonality<=1 & clonality >0){
-    #     clonal_vals = c(clonal_vals, clonality)
-    #   }
-    #
-    # }else{
-    #   # clonal_vals = c(clonal_vals, 1)
-    # }
-
+    
+    f_2 = ((CN_t * freq.tc) - (n*CNV_prop) )/(CN_h * y )
+    
+    F2 = c(F2,
+           f_2)
+    
+    if (f_2 <=1.05 & f_2 >0.01) # if n = 0, it means there are no SNV hits in CNV aberrant cells,
+      # and therefore clonality is equal to y*f_2*2
+    {
+      m = ifelse(n==0, 0, 1)
+      clonality = (m*CNV_prop) + (y * f_2 * CN_h)
+      if (clonality<=1.05 & clonality >0){
+        clonal_vals = c(clonal_vals, clonality)
+        n_vals = c(n_vals, n)
+      }
+    }
+    
+    
   }
-
-  cat("n\t",n_values, "\nF_2\t", F2)
+  
+  cat("n\t",n_values, "\nF_2\t", F2, '\n')
+  cat("n_accepted\t", n_vals, '\n')
+    
   cat("\nclonalities\t", clonal_vals,'\n')
-
   clonality = mean(unique(clonal_vals))
-  cat("\nclonality\t",clonality,"\n")
-  return(clonality)
+
+  cat("clonality is", clonality, '\n')
+  return(min(clonality, 1))
 }
 
 # I leave this function for you Nikita, please modify the one above
