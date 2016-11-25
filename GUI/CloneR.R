@@ -1,11 +1,11 @@
-sample_filename='../Example/CloneR_Test.sample_simulations_7Nov.txt'
-mutation_filename='../Example/CloneR_Test.mutations_simulations_7Nov.txt'
-cnv_filename='../Example/CloneR_Test.cnvs_simulations_7Nov.txt'
-gene_list_filename='../GeneLists/Actionable_genes.tsv'
-outdir='~/tmp'
-
-source("../functions.R")
-source("../config.R")
+sample_filename='Example/COAD_samples.179.tsv'
+mutation_filename='Example/COAD_mutations.no_filter_freq.179.tsv'
+cnv_filename='Example/COAD_cnvs.178.tsv'
+gene_list_filename='GeneLists/NCG5_518_CGC.tsv'
+outdir='CloneR Simulations/'
+ann_filename='GeneLists/Agilent_genes.tsv'
+source("functions.R")
+source("config.R")
 
 
 # ==== Load Configuration File =====
@@ -87,10 +87,11 @@ if(!is.null(cnvs)){
 
 # === Assign genes to CNV regions ====
 
+
 if(!is.null(cnv_list)){
   cat("Annotating genes in CNV regions...\n")
   if(file.exists(ann_filename)){
-    cnv_list = lapply_pb(cnv_list, get.genes.in.CNV.regions, annotation_filename = ann_filename )
+    cnv_list = lapply(cnv_list, get.genes.in.CNV.regions, annotation_filename = ann_filename )
   }else{
     cnv_list = lapply(cnv_list, get.genes.in.CNV.regions )
   }
@@ -129,7 +130,7 @@ cat("Done\n")
 # ==== Density plot =====
 
 cat("Plotting clonality ditributions...\n")
-density_plot_list = lapply(dataset_list, density.plot)
+density_plot_list = lapply(dataset_list, density.plot) #changed density plot from plotting drivers, need to fix that
 cat("\nDone\n")
 
 # ==== Clonality heatmap =====
@@ -154,7 +155,7 @@ for( i_sample in samples$sample ){
   setTxtProgressBar(pb, i)
   savePlot(analysis, i_sample,
            clone_composition[[ i_sample ]],
-           density_plot_list[[ i_sample ]],
+           #density_plot_list[[ i_sample ]],
            heatmap_genes[[i_sample]],
            gene_list)
   i = i+1
@@ -167,12 +168,12 @@ cat("\nDone\n")
 cat("Generating reports...")
 
 for( i_sample in samples$sample ){
-  write.table(dataset_list[[i_sample]][,c('sample','alt.type','id','cell','gname','assignedCNV','category')],
+  write.table(dataset_list[[i_sample]][,c('sample','alt.type','id','cell','assignedCNV')],    #'gname','category')],
               file = paste0(analysis, "/", i_sample,"/",i_sample,".composition.tsv" ), row.names = F, col.names = T, quote = F, sep = "\t")
 }
 
-dataset = do.call( 'rbind', dataset_list )
-write.table(dataset[,c('sample','alt.type','id','cell','gname','assignedCNV','category')],
+dataset = do.call( 'rbind', dataset_list)
+write.table(dataset[,c('sample','alt.type','id','cell','assignedCNV')],    #'gname','category')],
             file = paste(analysis, "clonality.tsv", sep='/' ), row.names = F, col.names = T, quote = F, sep = "\t")
 
 composition = do.call("rbind",clone_comp_list)

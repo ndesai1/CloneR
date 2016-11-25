@@ -58,11 +58,15 @@ read.mutation.file=function(filename){
       if(length(grep("chr",x$chrom))==0) x$chrom=paste('chr',x$chrom, sep="", coll="")
       x = x[which(!is.na(x$freq)),]
       # if(sum(x$freq<=1)==nrow(x)) x$freq=x$freq*100
-      x$id = paste0(x$chrom, ".", x$position,".", x$ref, '.', x$varallele)
+      chrm_no = sapply(x$chrom, toString)
+      chrm_no = sapply(strsplit(chrm_no, split='r'), function(x) (x[2]))
+      x$id = paste0(x$sample, ":" , chrm_no, ":", x$position,":", x$ref) #changed id from previous, need to change back later
+      
       x$assignedCNV=NA
       x$CN_major  = 1
       x$CN_minor  = 1
-      x$CN_raw    = 2
+      x$CN_a =2
+      x$CN_t    = 2
       x$CN_normal = 2
     } else {
       stop("read.mutation.file: missing fields in mutation file ")
@@ -81,15 +85,15 @@ read.mutation.file=function(filename){
 read.cnv.file=function(filename){
   if(!is.null(filename)){
     x = read.table(filename, h=F, sep='\t')
-    if(ncol(x)==8){
-      colnames(x) =c('sample','chrom','start','end','assignedCNV', 'CN_major', 'CN_minor',  'CN_raw')
+    if(ncol(x)==9){
+      colnames(x) =c('sample','chrom','start','end','assignedCNV', 'CN_major', 'CN_minor', 'CN_a', 'CN_t')
       x$CN_normal = 2
       x$type="CNV"
       x$alt.type=x$assignedCNV
       x$id = with(x, paste(chrom,".",start,".",end, sep = "", coll = ""))
       return(x)
-    }else if(ncol(x)==9){
-      colnames(x) =c('sample','chrom','start','end','assignedCNV', 'CN_major', 'CN_minor',  'CN_raw', 'CN_normal')
+    }else if(ncol(x)==10){
+      colnames(x) =c('sample','chrom','start','end','assignedCNV', 'CN_major', 'CN_minor', 'CN_a',  'CN_t', 'CN_normal')
       x$type="CNV"
       x$alt.type=x$assignedCNV
       x$id = with(x, paste(chrom,".",start,".",end, sep = "", coll = ""))
@@ -160,7 +164,8 @@ get.CNV.status = function(m, c=NULL, chr=chr_levels){
       m$assignedCNV[queryHits(ov)] = c$assignedCNV[subjectHits(ov)]
       m$CN_major[queryHits(ov)]    = c$CN_major[subjectHits(ov)]
       m$CN_minor[queryHits(ov)]    = c$CN_minor[subjectHits(ov)]
-      m$CN_raw[queryHits(ov)]      = c$CN_raw[subjectHits(ov)]
+      m$CN_a[queryHits(ov)] = c$CN_a[subjectHits(ov)]
+      m$CN_t[queryHits(ov)]      = c$CN_t[subjectHits(ov)]
       m$CN_normal[queryHits(ov)]      = c$CN_normal[subjectHits(ov)]
 
     }
@@ -227,16 +232,22 @@ get.CNV.proportion = function(CN_t, CN_a, CN_n  = 2 ){
 get.CNV.clonality.for.SNVs=function(x,y){
   tc = y$tc
   #get total absolute number of alleles in copy number aberrant cells
-  x$CN_a = with(x, CN_major + CN_minor )
+  #x$CN_a = with(x, CN_major + CN_minor )
   #get the average copy in tumor cells corrected for tumor content
-  x$CN_t = with(x, (CN_raw - (CN_normal * ( 1-tc )) ) / tc )
+  #x$CN_t = with(x, (CN_raw - (CN_normal * ( 1-tc )) ) / tc )
 
   #calculate the clonality of cells with CNVs (CNV_prop)
-  x$CNV_prop = get.CNV.proportion(x$CN_t, x$CN_a, x$CN_normal)
+  x$CNV_prop = mapply(get.CNV.proportion,x$CN_t, x$CN_a, x$CN_normal)
 
   #get a list of possible n-values that will be used to determine clonality in subclonal populations
-  for(i in 1:nrow(x)) x$n_vals[i] = paste(  unique(c(0,1,x$CN_minor[i], x$CN_major[i], (x$CN_a[i] -1) ) ), collapse = ",")
-
+  for(i in 1:nrow(x)) {
+    if ((x$CN_major[i]+x$CN_minor[i]) == x$CN_a[i])
+    {
+      x$n_vals[i] = paste(unique(c(0,1,x$CN_minor[i], x$CN_major[i], max(x$CN_a[i] -1, 0), x$CN_a[i]) ), collapse = ",")
+    }else{
+      x$n_vals[i]=paste(unique(c(0,1, x$CN_minor[i], max(x$CN_a[i]-1, 0) , x$CN_a[i])), collapse=",")
+    }
+  }  
   return(x)
 }
 
@@ -247,7 +258,7 @@ get.CNV.clonality.for.SNVs=function(x,y){
 
 #This function calculates clonality for SNVs in subclonal copy number regions
 get.clonality.subclonal.CNV = function(freq.tc, CNV_prop, CN_t, n_vals, CN_h = 2){
-
+  
   n_values = as.integer( unlist(strsplit(n_vals, ",") ) )
   clonal_vals = F2 = NULL;
   n_vals = NULL;
@@ -273,13 +284,16 @@ get.clonality.subclonal.CNV = function(freq.tc, CNV_prop, CN_t, n_vals, CN_h = 2
     
     
   }
+  if(length(clonal_vals)==0){
+    clonal_vals = freq.tc*CN_t
+  }
   
   cat("n\t",n_values, "\nF_2\t", F2, '\n')
   cat("n_accepted\t", n_vals, '\n')
-    
+  
   cat("\nclonalities\t", clonal_vals,'\n')
   clonality = mean(unique(clonal_vals))
-
+  
   cat("clonality is", clonality, '\n')
   return(min(clonality, 1))
 }
@@ -337,9 +351,9 @@ get.CNV.clonality=function(x,y){
 
   tc = y$tc
   #get total absolute number of alleles in copy number aberrant cells
-  x$CN_a = with(x, CN_major + CN_minor )
+  #x$CN_a = with(x, CN_major + CN_minor )
   #get the average copy in tumor cells corrected for tumor content
-  x$CN_t = with(x, (CN_raw - (CN_normal * ( 1-tc )) ) / tc )
+  #x$CN_t = with(x, (CN_t - (CN_normal * ( 1-tc )) ) / tc )
 
   #calculate the clonality of cells with CNVs (CNV_prop)
   x$cell = get.CNV.proportion(x$CN_t, x$CN_a, x$CN_normal)
@@ -352,7 +366,7 @@ get.CNV.clonality=function(x,y){
 
 # This function generate the dataset for the clonality.plot
 prepare.dataset = function(m=NULL, c=NULL){
-  mcol = c('sample','alt.type','cell','type','gname','id','assignedCNV','CN_major', 'CN_minor', 'CN_raw', 'CN_normal','CN_raw','CN_a','CN_t') #,'freq','freq.tc'
+  mcol = c('sample','alt.type','cell','gname','type','id','assignedCNV','CN_major', 'CN_minor', 'CN_normal','CN_a','CN_t') #,'freq','freq.tc'
   if(!is.null(m) & is.null(c)){
     return(m[,mcol])
   }else if(is.null(m)  & !is.null(c)){
@@ -363,7 +377,7 @@ prepare.dataset = function(m=NULL, c=NULL){
 }
 
 prepare.dataset.1set = function(c){
-  mcol = c('sample','alt.type','cell','type','gname','id','assignedCNV','CN_major', 'CN_minor', 'CN_raw', 'CN_normal','CN_raw','CN_a','CN_t') #,'freq','freq.tc'
+  mcol = c('sample','type','cell','alt.type','id','assignedCNV','CN_major', 'CN_minor', 'CN_normal','CN_a','CN_t') #,'freq','freq.tc'
   if(!is.null(c)){
     return( c[,mcol] )
   } else {
@@ -710,9 +724,10 @@ density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
     lmax = ifelse( ymax>=0.5, round(ymax), 1)
     lmed = ifelse(lmax==1, 0.5, ifelse( ymed>0.5, round(ymed), 0.5))
 
-    drivers=subset(px, !is.na(category) )
+    #drivers=subset(px, !is.na(category) )
+    drivers = NULL
 
-    if(nrow(drivers)>0){
+    if(!is.null(drivers)>0){
 
       p.drivers = plot.drivers(drivers, gg, gga )
 
