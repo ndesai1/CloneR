@@ -366,7 +366,7 @@ get.CNV.clonality=function(x,y){
 
 # This function generate the dataset for the clonality.plot
 prepare.dataset = function(m=NULL, c=NULL){
-  mcol = c('sample','alt.type','cell','gname','type','id','assignedCNV','CN_major', 'CN_minor', 'CN_normal','CN_a','CN_t') #,'freq','freq.tc'
+  mcol = c('sample','alt.type','cell','gname','type','id','assignedCNV','CN_major', 'CN_minor', 'CN_normal','CN_a','CN_t', 'gname') #,'freq','freq.tc'
   if(!is.null(m) & is.null(c)){
     return(m[,mcol])
   }else if(is.null(m)  & !is.null(c)){
@@ -377,7 +377,7 @@ prepare.dataset = function(m=NULL, c=NULL){
 }
 
 prepare.dataset.1set = function(c){
-  mcol = c('sample','type','cell','alt.type','id','assignedCNV','CN_major', 'CN_minor', 'CN_normal','CN_a','CN_t') #,'freq','freq.tc'
+  mcol = c('sample','type','cell','alt.type','id','assignedCNV','CN_major', 'CN_minor', 'CN_normal','CN_a','CN_t', 'gname') #,'freq','freq.tc'
   if(!is.null(c)){
     return( c[,mcol] )
   } else {
@@ -391,7 +391,7 @@ set.gene.category = function(m, gl=NULL){
   if(!is.null(m)){
     m$category = NA
     if(!is.null(gl)){
-      m$category = gl$category[ match( m$gname, gl$gname) ]
+      m$category = gl$category[ match(m$gname, gl$gname) ]
     }
   }
   return(m)
