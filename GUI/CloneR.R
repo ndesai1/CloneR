@@ -1,6 +1,6 @@
 sample_filename='Example/COAD_samples.179.tsv'
 mutation_filename='Example/COAD_mutations.no_filter_freq.179.tsv'
-cnv_filename='Example/COAD_cnvs.178.tsv'
+cnv_filename='Example/COAD_cnvs.179.tsv'
 gene_list_filename='GeneLists/NCG5_518_CGC.tsv'
 outdir='CloneR Simulations/'
 ann_filename='GeneLists/Agilent_genes.tsv'
@@ -137,7 +137,7 @@ cat("\nDone\n")
 
 cat("Plotting clonality of gene of interest...")
 if(!is.null(gene_list)){
-  heatmap_genes = lapply_pb( dataset_list, heatmap.genes )
+  heatmap_genes = lapply_pb( dataset_list, heatmap.genes)
   genes_of_interest = lapply( dataset_list, get.clonality.gene.of.interest )
   genes_of_interest = do.call("rbind",genes_of_interest[ !sapply(genes_of_interest,is.null) ])
 }
@@ -156,7 +156,7 @@ for( i_sample in samples$sample ){
   savePlot(analysis, i_sample,
            clone_composition[[ i_sample ]],
            #density_plot_list[[ i_sample ]],
-           heatmap_genes[[i_sample]],
+           #heatmap_genes[[i_sample]],
            gene_list)
   i = i+1
 }
