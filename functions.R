@@ -181,6 +181,11 @@ get.genes.in.CNV.regions = function(c, annotation_filename = "GeneLists/Agilent_
   require(GenomicRanges)
   if(!is.null(c)){
     ag = read.delim(annotation_filename,stringsAsFactors=F, h=F)
+    sex_chrom = c("chrX", "chrY")
+    ag$V1[ag$V1 %in% sex_chrom] = "chr23"
+    c$start = as.numeric(c$start)
+    c$end = as.numeric(c$end)
+    c$chrom = as.character(c$chrom)
     if(nrow(ag)>0){
       ig = with(ag,GRanges(V1,IRanges(V2,V3) ) )
       ic  = with(c, GRanges(chrom, IRanges(start,end) ))
@@ -288,13 +293,13 @@ get.clonality.subclonal.CNV = function(freq.tc, CNV_prop, CN_t, n_vals, CN_h = 2
     clonal_vals = freq.tc*CN_t
   }
   
-  cat("n\t",n_values, "\nF_2\t", F2, '\n')
-  cat("n_accepted\t", n_vals, '\n')
+  #cat("n\t",n_values, "\nF_2\t", F2, '\n')
+  #cat("n_accepted\t", n_vals, '\n')
   
-  cat("\nclonalities\t", clonal_vals,'\n')
+  #cat("\nclonalities\t", clonal_vals,'\n')
   clonality = mean(unique(clonal_vals))
   
-  cat("clonality is", clonality, '\n')
+  #cat("clonality is", clonality, '\n')
   return(min(clonality, 1))
 }
 
@@ -613,6 +618,7 @@ base_breaks_y2 = function(m, br, la ){
 
 check.alterations.per.category = function( y ){
   # duplicates
+  y$gname = as.character(y$gname)
   iy = paste(y$cell,'.',y$id, sep="", coll="")
   iy = which(!duplicated(iy))
   if(length(iy)>0){
@@ -646,8 +652,9 @@ check.alterations.per.category = function( y ){
 }
 
 prepare.dataset.to.density.plot = function(y){
+  y = as.data.table(y)
   tmp = subset(y, Alteration_type%in%c("Gain",'Loss'))
-
+  cx = NULL
   if(nrow(tmp)>0){
     cx = ddply(tmp, .(id,Alteration_type,cell), summarise, gname=paste(gname,collapse=",") )
   }
@@ -656,14 +663,14 @@ prepare.dataset.to.density.plot = function(y){
 
   dd = NULL
 
-  if(nrow(mut)>0 & nrow(tmp)>0){
+  #if(nrow(mut)>0 & nrow(tmp)>0){
     dd = as.data.frame( rbind(mut[,c('Alteration_type','cell')], cx[,c('Alteration_type','cell')]) , check.names=F)
-  }else if(is.null(tmp)){
-    dd = as.data.frame( mut[,c('Alteration_type','cell')] , check.names=F)
-  }else if(is.null(mut)){
-    dd = as.data.frame( cx[,c('Alteration_type','cell')] , check.names=F)
-  }
-
+  #}else if(is.null(tmp)){
+  #  dd = as.data.frame( mut[,c('Alteration_type','cell')] , check.names=F)
+  #}else if(is.null(mut)){
+  #  dd = as.data.frame( cx[,c('Alteration_type','cell')] , check.names=F)
+  #}
+  names(dd) = c('Alteration_type','cell')
   dd$Alteration_type=factor(dd$Alteration_type, levels=  c("SNV","InDel","Gain","Loss"))
 
   m = with(dd, table(Alteration_type, cell))
@@ -688,6 +695,7 @@ density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
   if(!is.null(x)){
     colnames(x)[2]='Alteration_type'
     px = NULL
+    x$cell = as.numeric(x$cell)
 
     # SELECT ONLY MUTATIONS THAT DO NOT UNDERGO CNVS
 
@@ -726,12 +734,14 @@ density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
 
     #drivers=subset(px, !is.na(category) )
     drivers = NULL
-
+    drivers=subset(px, !is.na(category) )
+    
     if(!is.null(drivers)>0){
 
-      p.drivers = plot.drivers(drivers, gg, gga )
+      #p.drivers = plot.drivers(drivers, gg, gga )
 
-      drvrs=ddply(drivers, .(cell,Alteration_type), summarise, gname=paste(gname, collapse=","))
+      drvrs=ddply(drivers, .(Alteration_type,gname), summarise, cell=cell[which.max(cell)])
+      #ddply( drivers, .(sample, gname), summarise, cell=cell[which.max(cell)])
 
       plvs=c("SNV","InDel","Gain","Loss"); names(plvs)=c("SNV","InDel","Gain","Loss")
       plvs = plvs[which(names(plvs)%in%gga)]
@@ -754,19 +764,18 @@ density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
 
       p.drvrs      = as.data.frame(p.drvrs, stringsAsFactors=F)
 
-      p +
-        geom_point(data=p.drvrs, aes(x = cell, y=y), colour="black", show.legend = F)+
-
-
-        ishape = c(19,17); names(ishape)=c("Yes","No")
+      #p +
+        #geom_point(data=p.drvrs, aes(x = cell, y=y), colour="black", show.legend = F)+
+        #geom_text_repel(data=p.drvrs, aes(x=cell, y=y, label = gname))
+      #+  ishape = c(19,17); names(ishape)=c("Yes","No")
 
       if(names==T){
-        p= p + geom_point(data=p.drvrs, aes(x = cell, y=y, shape=original), colour="black", show.legend = F)+
+        p= p + geom_point(data=p.drvrs, aes(x = cell, y=y), colour="black", show.legend = F)+
           geom_text_repel(data=p.drvrs, aes(x=cell, y=y, label = gname))#        (data=p.drivers, aes(x = cell,y=y,label=gname, family=""),  size=rel(3.5), hjust=rel(.75), vjust=rel(-.25), show.legend = F)
         # scale_shape_manual(values=ishape[levels(p.drivers$original)], guide = 'none')
-        if(sum(p.drivers$nx>0)>0){
-          p = p +   geom_segment(data=subset(p.drivers,nx>0), aes(x = cell,y=y,xend=nx,yend=ny))
-        }
+        #if(sum(p.drivers$nx>0)>0){
+        #  p = p +   geom_segment(data=subset(p.drivers,nx>0), aes(x = cell,y=y,xend=nx,yend=ny))
+        #}
       }
 
     }
@@ -786,6 +795,7 @@ density.plot=function(x,adj=5, names=T, fill_cols=color_density_plot){
   } else {
     return(NULL)
   }
+  cat("done")
 }
 
 get.clonality.gene.of.interest = function(x){
@@ -808,6 +818,7 @@ get.clonality.gene.of.interest = function(x){
 
 #this function get the heatmap of select genes
 heatmap.genes = function( x ){
+  x$cell = x$cell * 100
   p = NULL
   drivers = NULL
   drivers=subset(x, !is.na(category) )
