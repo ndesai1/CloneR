@@ -190,7 +190,6 @@ get.genes.in.CNV.regions = function(c, annotation_filename = "GeneLists/Agilent_
       ag$V1[ag$V1 %in% sex_chrom] = "chr23"
       ig = with(ag,GRanges((V1),IRanges(V2,V3) ) )
       ic  = with(c, GRanges(chrom, IRanges(start,end) ))
-      print(head(ic))
       ov  = findOverlaps(ig,ic)
       c$gname=NA
       if(length(subjectHits(ov))>0) c$gname[subjectHits(ov)] = ag$V4[queryHits(ov)]
