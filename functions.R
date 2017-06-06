@@ -179,18 +179,19 @@ get.CNV.status = function(m, c=NULL, chr=chr_levels){
 # This function  assign genes to CNV regions
 get.genes.in.CNV.regions = function(c, annotation_filename = "GeneLists/Agilent_genes.tsv"){
   require(GenomicRanges)
-  print(str(c))
+  
   if(!is.null(c)){
     ag = read.delim(annotation_filename,stringsAsFactors=F, h=F)
+    print(head(ag))
     sex_chrom = c("chrX", "chrY")
     c$start = as.numeric(as.character(c$start))
     c$end = as.numeric(as.character(c$end))
     c$chrom = as.character(c$chrom)
-    print(str(c))
     if(nrow(ag)>0){
       ag$V1[ag$V1 %in% sex_chrom] = "chr23"
+      print(str(ag))
       cat("got here \n")
-      ig = with(ag,GRanges(as.character(V1),IRanges(as.numeric(as.character(V2)),as.numeric(as.character(V3)) ) ) )
+      ig = with(ag,GRanges(as.character(V1),IRanges(V2,V3) ) )
       print(head(ig))
       cat("typeof start")
       print(typeof(c$start))
