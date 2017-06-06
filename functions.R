@@ -182,19 +182,13 @@ get.genes.in.CNV.regions = function(c, annotation_filename = "GeneLists/Agilent_
   
   if(!is.null(c)){
     ag = read.delim(annotation_filename,stringsAsFactors=F, h=F)
-    print(head(ag))
     sex_chrom = c("chrX", "chrY")
     c$start = as.numeric(as.character(c$start))
     c$end = as.numeric(as.character(c$end))
     c$chrom = as.character(c$chrom)
     if(nrow(ag)>0){
       ag$V1[ag$V1 %in% sex_chrom] = "chr23"
-      print(str(ag))
-      cat("got here \n")
-      ig = with(ag,GRanges(as.character(V1),IRanges(V2,V3) ) )
-      print(head(ig))
-      cat("typeof start")
-      print(typeof(c$start))
+      ig = with(ag,GRanges((V1),IRanges(V2,V3) ) )
       ic  = with(c, GRanges(chrom, IRanges(start,end) ))
       print(head(ic))
       ov  = findOverlaps(ig,ic)
@@ -660,8 +654,8 @@ check.alterations.per.category = function( y ){
 }
 
 prepare.dataset.to.density.plot = function(y){
-  y = as.data.table(y)
-  tmp = subset(y, Alteration_type%in%c("Gain",'Loss'))
+  #y = as.data.table(y)
+  tmp = subset(y, Alteration_type %in% c("Gain",'Loss'))
   cx = NULL
   if(nrow(tmp)>0){
     cx = ddply(tmp, .(id,Alteration_type,cell), summarise, gname=paste(gname,collapse=",") )
