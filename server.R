@@ -4,7 +4,7 @@ library(shiny)
 library(DT)
 
 
-options(shiny.maxRequestSize = 30*1024^2)
+options(shiny.maxRequestSize = 2000*1024^2)
 options(scipen=3)
 
 
