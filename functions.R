@@ -183,12 +183,12 @@ get.genes.in.CNV.regions = function(c, annotation_filename = "GeneLists/Agilent_
     ag = read.delim(annotation_filename,stringsAsFactors=F, h=F)
     sex_chrom = c("chrX", "chrY")
     ag$V1[ag$V1 %in% sex_chrom] = "chr23"
-    c$start = as.numeric(c$start)
-    c$end = as.numeric(c$end)
-    c$chrom = as.character(c$chrom)
+    #c$start = as.numeric(c$start)
+    #c$end = as.numeric(c$end)
+    #c$chrom = as.character(c$chrom)  
     if(nrow(ag)>0){
       ig = with(ag,GRanges(V1,IRanges(V2,V3) ) )
-      ic  = with(c, GRanges(chrom, IRanges(start,end) ))
+      ic  = with(c, GRanges(as.character(chrom), IRanges(as.numeric(start),as.numeric(end)) ))
       ov  = findOverlaps(ig,ic)
       c$gname=NA
       if(length(subjectHits(ov))>0) c$gname[subjectHits(ov)] = ag$V4[queryHits(ov)]
