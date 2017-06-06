@@ -257,6 +257,8 @@ shinyServer(function(input, output) {
               print(title)
               print(outdir)
               print(snp_folder)
+              print(gene_list_filename)
+              print(ann_filename)
 
               if(!is.null(outdir) & !is.null(sample_filename) & ( !is.null(mutation_filename) | (!is.null(cnv_filename)) ) ){
 
