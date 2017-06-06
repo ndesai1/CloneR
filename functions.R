@@ -190,7 +190,7 @@ get.genes.in.CNV.regions = function(c, annotation_filename = "GeneLists/Agilent_
     if(nrow(ag)>0){
       ag$V1[ag$V1 %in% sex_chrom] = "chr23"
       cat("got here \n")
-      ig = with(ag,GRanges(V1,IRanges(V2,V3) ) )
+      ig = with(ag,GRanges(as.character(V1),IRanges(as.numeric(as.character(V2)),as.numeric(as.character(V3)) ) ) )
       print(head(ig))
       cat("typeof start")
       print(typeof(c$start))
