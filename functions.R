@@ -179,17 +179,18 @@ get.CNV.status = function(m, c=NULL, chr=chr_levels){
 # This function  assign genes to CNV regions
 get.genes.in.CNV.regions = function(c, annotation_filename = "GeneLists/Agilent_genes.tsv"){
   require(GenomicRanges)
+  print(str(c))
   if(!is.null(c)){
     ag = read.delim(annotation_filename,stringsAsFactors=F, h=F)
     sex_chrom = c("chrX", "chrY")
-    #c$start = as.numeric(c$start)
-    #c$end = as.numeric(c$end)
-    #c$chrom = as.character(c$chrom)  
+    c$start = as.numeric(as.character(c$start))
+    c$end = as.numeric(as.character(c$end))
+    c$chrom = as.character(c$chrom)
+    print(str(c))
     if(nrow(ag)>0){
       ag$V1[ag$V1 %in% sex_chrom] = "chr23"
       cat("got here \n")
       ig = with(ag,GRanges(V1,IRanges(V2,V3) ) )
-      print(str(c))
       ic  = with(c, GRanges(as.character(chrom), IRanges(as.numeric(start),as.numeric(end)) ))
       ov  = findOverlaps(ig,ic)
       c$gname=NA
