@@ -45,8 +45,8 @@ shinyUI(
                                  fileInput('mutation_file',         labelMandatory('Mutations'), accept = c('text/tab-separated-values', '.tsv' )),
                                  fileInput('cnv_file',              labelMandatory('CNV regions'), accept = c('text/tab-separated-values', '.tsv' )),
                                  # textInput("snp_folder",            labelMandatory("Path to germline heterozygous SNP folder"), ""),
-                                 fileInput('list_gene_file',       'Genes of interest', accept = c('text/tab-separated-values', '.tsv' )),
-                                 fileInput('gene_coordinate_file', 'Gene coordinates', accept = c('text/tab-separated-values', '.tsv' )),
+                                 fileInput('list_gene_file',       'Gene coordinates', accept = c('text/tab-separated-values', '.tsv' )),
+                                 fileInput('gene_coordinate_file', 'Genes of interest', accept = c('text/tab-separated-values', '.tsv' )),
                                  p(labelMandatory("Mandatory fields are marked with ")),
                                  actionButton("submit", "Run CloneR", class = "btn-primary")
                                # )
