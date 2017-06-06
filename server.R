@@ -1,6 +1,8 @@
 source("functions.R")
+source("config.R")
 library(shiny)
 library(DT)
+
 
 options(shiny.maxRequestSize = 30*1024^2)
 options(scipen=3)
