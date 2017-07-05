@@ -38,7 +38,7 @@ CloneR can be run on an R shell following the commands reported in the script GU
 
 - CNV file (tab separated). Columns: sample, chr, start , end, cnv type, CN_major, CN_minor, CN_total, CN raw
 
-##Annotation files
+##Annotation files##
 
 In addition to the input files, CloneR needs two more files to run: 
 
