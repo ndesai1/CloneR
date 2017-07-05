@@ -24,7 +24,7 @@ library(plotly)
 library(shinythemes)
 library(DT)
 
-runGitHub("CloneR","matteocereda")
+runGitHub("CloneR","ndesai1")
 ```
 
 ## GUI
