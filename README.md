@@ -36,7 +36,7 @@ CloneR can be run on an R shell following the commands reported in the script GU
 
 - Mutation file (tab separated). Columns: sample, chr, position , reference, variant , allele frequency, gene symbol, mutation type (i.e. SNV, InDel)
 
-- CNV file (tab separated). Columns: sample, chr, start , end, cnv type, CN_major, CN_minor, CN raw
+- CNV file (tab separated). Columns: sample, chr, start , end, cnv type, CN_major, CN_minor, CN_total, CN raw
 
 
 
