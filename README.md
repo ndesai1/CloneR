@@ -38,7 +38,13 @@ CloneR can be run on an R shell following the commands reported in the script GU
 
 - CNV file (tab separated). Columns: sample, chr, start , end, cnv type, CN_major, CN_minor, CN_total, CN raw
 
+##Annotation files
 
+In addition to the input files, CloneR needs two more files to run: 
+
+- Gene co-ordinates file (tab separated). Columns: chr, start, end, gene symbol. Can use Genelists/Agilent_genes.tsv or provide your own
+
+- Genes of interest file (tab separated). Columns: gene symbol, gene property (i.e. CGC or actionable). Can use Genelists/NCG5_518_CGC.tsv or provide your own. 
 
 ## Contributors
 
